@@ -139,64 +139,96 @@
     </div>
   </div>
 
-  <!-- Format Option (Clean 2-Column Toggle) -->
-  <div class="mb-4">
-    <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2">
-      Format Bahasa EPUB
+  <!-- Target Language Selector -->
+  <div class="mb-3">
+    <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-1.5">
+      Bahasa Terjemahan (Model AI)
     </label>
     <div class="grid grid-cols-2 gap-2">
-      <!-- Full English Option -->
+      <!-- English Option (Default & Fastest) -->
+      <div
+        role="button"
+        tabindex="0"
+        (click)="setTargetLang('en')"
+        [class.neo-card-active]="targetLang === 'en'"
+        class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+      >
+        <div class="flex items-center justify-between gap-1 mb-0.5">
+          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
+            ENGLISH
+          </span>
+          <div
+            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
+            [class.bg-black]="targetLang === 'en'"
+            [class.bg-white]="targetLang !== 'en'"
+          >
+            @if (targetLang === 'en') {
+              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
+            }
+          </div>
+        </div>
+        <p class="text-[9px] font-mono font-bold text-gray-500">
+          Sugoi V4 (Ultra Cepat)
+        </p>
+      </div>
+
+      <!-- Indonesia Option -->
+      <div
+        role="button"
+        tabindex="0"
+        (click)="setTargetLang('id')"
+        [class.neo-card-active]="targetLang === 'id'"
+        class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+      >
+        <div class="flex items-center justify-between gap-1 mb-0.5">
+          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
+            INDONESIA
+          </span>
+          <div
+            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
+            [class.bg-black]="targetLang === 'id'"
+            [class.bg-white]="targetLang !== 'id'"
+          >
+            @if (targetLang === 'id') {
+              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
+            }
+          </div>
+        </div>
+        <p class="text-[9px] font-mono font-bold text-gray-500">
+          Qwen 2.5 (Bahasa Indo)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Layout Format Selector -->
+  <div class="mb-4">
+    <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-1.5">
+      Tampilan Teks EPUB
+    </label>
+    <div class="grid grid-cols-2 gap-2">
+      <!-- Clean Translated -->
       <div
         role="button"
         tabindex="0"
         (click)="setMode('translated')"
         [class.neo-card-active]="mode === 'translated'"
-        class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+        class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center"
       >
-        <div class="flex items-center justify-between gap-1 mb-0.5">
-          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            FULL ENGLISH
-          </span>
-          <div
-            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
-            [class.bg-black]="mode === 'translated'"
-            [class.bg-white]="mode !== 'translated'"
-          >
-            @if (mode === 'translated') {
-              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
-            }
-          </div>
-        </div>
-        <p class="text-[9px] font-mono font-bold text-gray-500">
-          100% Bersih (0 JP)
-        </p>
+        <p class="font-black text-xs text-[#1A1A1A]">100% Bersih</p>
+        <p class="text-[9px] font-mono font-bold text-gray-500">Tanpa Teks Jepang</p>
       </div>
 
-      <!-- Bilingual Option -->
+      <!-- Bilingual -->
       <div
         role="button"
         tabindex="0"
         (click)="setMode('bilingual')"
         [class.neo-card-active]="mode === 'bilingual'"
-        class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+        class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center"
       >
-        <div class="flex items-center justify-between gap-1 mb-0.5">
-          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            BILINGUAL
-          </span>
-          <div
-            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
-            [class.bg-black]="mode === 'bilingual'"
-            [class.bg-white]="mode !== 'bilingual'"
-          >
-            @if (mode === 'bilingual') {
-              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
-            }
-          </div>
-        </div>
-        <p class="text-[9px] font-mono font-bold text-gray-500">
-          Paragraf JP + EN
-        </p>
+        <p class="font-black text-xs text-[#1A1A1A]">Bilingual</p>
+        <p class="text-[9px] font-mono font-bold text-gray-500">JP + Terjemahan</p>
       </div>
     </div>
   </div>

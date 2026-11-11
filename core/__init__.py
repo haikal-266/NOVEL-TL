@@ -2,7 +2,15 @@ from .scraper import KakuyomuScraper, parse_kakuyomu_url
 from .cache_manager import CacheManager
 from .epub_builder import EPUBBuilder, clean_english_text
 from .translators.sugoi import SugoiTranslator
-from .translators.llm import LLMTranslator
+
+def __getattr__(name: str):
+    if name == "QwenTranslator":
+        from .translators.qwen import QwenTranslator
+        return QwenTranslator
+    if name == "LLMTranslator":
+        from .translators.llm import LLMTranslator
+        return LLMTranslator
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = [
     "KakuyomuScraper",
@@ -11,6 +19,6 @@ __all__ = [
     "EPUBBuilder",
     "clean_english_text",
     "SugoiTranslator",
-    "LLMTranslator"
+    "LLMTranslator",
+    "QwenTranslator"
 ]
-

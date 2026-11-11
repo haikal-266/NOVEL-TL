@@ -56,6 +56,26 @@
     }
   </div>
 
+  <!-- Running State Cancel CTA -->
+  @if (job.status === 'running' || job.status === 'pending') {
+    <div class="pt-0.5 mb-1">
+      <button
+        type="button"
+        (click)="onCancel()"
+        [disabled]="isCancelling || job.cancelled"
+        class="neo-btn w-full p-2.5 bg-[#FFC0AD] hover:bg-[#ffad95] text-black font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 border-2 border-black transition-all shadow-[2px_2px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <app-icon name="close" [size]="14" class="text-black" />
+        <span>
+          {{ isCancelling || job.cancelled ? 'Membatalkan... Merakit Bab Selesai' : 'Batalkan & Ambil Bab Selesai' }}
+        </span>
+      </button>
+      <p class="text-[10px] text-center font-mono text-gray-800 font-bold mt-1.5">
+        Jika dibatalkan, bab yang telah selesai akan langsung dirakit menjadi file EPUB.
+      </p>
+    </div>
+  }
+
   <!-- Completed State with Download CTA -->
   @if (job.status === 'completed' && downloadFullUrl) {
     <div class="space-y-2.5 pt-1">

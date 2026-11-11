@@ -32,6 +32,10 @@ export class NovelApiService {
     return this.http.get<JobState>(`${this.baseUrl}/jobs/${jobId}`);
   }
 
+  cancelJob(jobId: string): Observable<JobState> {
+    return this.http.post<JobState>(`${this.baseUrl}/jobs/${jobId}/cancel`, {});
+  }
+
   getDownloadUrl(filename: string): string {
     return `${this.baseUrl}/download/${encodeURIComponent(filename)}`;
   }

@@ -13,6 +13,9 @@ import { NovelApiService } from '../../services/novel-api.service';
 export class JobStatusComponent {
   @Input({ required: true }) job!: JobState;
   @Output() readonly reset = new EventEmitter<void>();
+  @Output() readonly cancel = new EventEmitter<void>();
+
+  isCancelling = false;
 
   private readonly apiService = inject(NovelApiService);
 
@@ -23,7 +26,15 @@ export class JobStatusComponent {
     return null;
   }
 
+  onCancel(): void {
+    if (this.job.status === 'running' || this.job.status === 'pending') {
+      this.isCancelling = true;
+      this.cancel.emit();
+    }
+  }
+
   onReset(): void {
+    this.isCancelling = false;
     this.reset.emit();
   }
 }

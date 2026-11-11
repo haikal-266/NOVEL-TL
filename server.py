@@ -65,6 +65,7 @@ class GenerateRequest(BaseModel):
     rangeType: Literal["current", "range", "all"]
     customRange: Optional[str] = None  # e.g. "1-5" or "1,2,3"
     mode: Literal["translated", "bilingual", "raw"] = "translated"
+    targetLang: Literal["en", "id"] = "en"
 
 class JobState(BaseModel):
     jobId: str
@@ -79,19 +80,33 @@ class JobState(BaseModel):
     downloadUrl: Optional[str] = None
     filename: Optional[str] = None
     error: Optional[str] = None
+    cancelled: bool = False
 
 
-# Global job store and singleton translator
+# Global job store and singleton translators
 JOBS: Dict[str, JobState] = {}
-_sugoi_translator: Optional[SugoiTranslator] = None
+_sugoi_translator = None
+_qwen_translator = None
 _translator_lock = threading.Lock()
 
-def get_translator() -> SugoiTranslator:
+def get_sugoi_translator() -> SugoiTranslator:
     global _sugoi_translator
     with _translator_lock:
         if _sugoi_translator is None:
+            from core.translators.sugoi import SugoiTranslator
             _sugoi_translator = SugoiTranslator()
         return _sugoi_translator
+
+def get_qwen_translator():
+    global _qwen_translator
+    with _translator_lock:
+        if _qwen_translator is None:
+            from core.translators.qwen import QwenTranslator
+            _qwen_translator = QwenTranslator(n_threads=4, n_ctx=2048)
+        return _qwen_translator
+
+def get_translator() -> SugoiTranslator:
+    return get_sugoi_translator()
 
 
 def sanitize_filename(name: str) -> str:
@@ -130,33 +145,6 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
                 curr_idx = ep["index"]
                 break
 
-    # Ensure English title, author, and synopsis are translated
-    if not novel_info.get("title_en") or not novel_info.get("author_en"):
-        try:
-            translator = get_translator()
-            if not novel_info.get("title_en") and novel_info.get("title"):
-                clean_t = re.sub(r"【.*?】", "", novel_info["title"]).strip()
-                if any(sep in clean_t for sep in ["〜", "～"]):
-                    parts = re.split(r"[〜～]", clean_t)
-                    main_part = parts[0].strip()
-                    sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
-                    main_en = translator.translate_single(main_part).replace("♪", "").strip()
-                    sub_en = translator.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
-                    novel_info["title_en"] = f"{main_en} - {sub_en}" if sub_en else main_en
-                else:
-                    novel_info["title_en"] = translator.translate_single(clean_t).replace("♪", "").strip()
-
-            if not novel_info.get("author_en") and novel_info.get("author"):
-                novel_info["author_en"] = translator.translate_single(novel_info["author"]).replace("♪", "").strip()
-
-            if not novel_info.get("synopsis_en") and novel_info.get("synopsis"):
-                short_syn = novel_info["synopsis"][:250].strip()
-                novel_info["synopsis_en"] = translator.translate_single(short_syn).replace("♪", "").strip()
-
-            cache.save_novel_info(novel_info)
-        except Exception as e:
-            print(f"[inspect_novel] translation warning: {e}")
-
     ep_items = [
         EpisodeItem(
             index=ep["index"],
@@ -172,11 +160,11 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
         currentEpisodeId=episode_id,
         currentEpisodeIndex=curr_idx,
         titleJa=novel_info.get("title", ""),
-        titleEn=novel_info.get("title_en"),
+        titleEn=novel_info.get("title_en") or novel_info.get("title", ""),
         authorJa=novel_info.get("author", "Unknown Author"),
-        authorEn=novel_info.get("author_en"),
+        authorEn=novel_info.get("author_en") or novel_info.get("author", "Unknown Author"),
         synopsis=novel_info.get("synopsis", ""),
-        synopsisEn=novel_info.get("synopsis_en"),
+        synopsisEn=novel_info.get("synopsis_en") or novel_info.get("synopsis", ""),
         url=novel_info.get("url", ""),
         totalEpisodes=novel_info.get("total_episodes", len(ep_items)),
         episodes=ep_items
@@ -227,38 +215,67 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                         indices_set.add(val)
             selected_indices = sorted(list(indices_set)) or [1]
 
-        job.totalChapters = len(selected_indices)
-        job.message = f"Selected {job.totalChapters} chapters for translation..."
+        target_lang = getattr(req, "targetLang", "en") or "en"
+        cache_flavor = "bridge_id" if target_lang == "id" else "sugoi_en"
 
-        # Initialize translator
-        translator = get_translator()
+        job.totalChapters = len(selected_indices)
+        job.message = f"Menyiapkan {job.totalChapters} bab untuk translasi ({'BRIDGE JP->EN->ID' if target_lang == 'id' else 'JP->EN'})..."
+
+        # Initialize translators
+        sugoi = get_sugoi_translator()
+        qwen = get_qwen_translator() if target_lang == "id" else None
 
         # Translate metadata if not present
-        if not novel_info.get("title_en"):
+        title_meta_key = f"title_{target_lang}"
+        author_meta_key = f"author_{target_lang}"
+        synopsis_meta_key = f"synopsis_{target_lang}"
+
+        if not novel_info.get(title_meta_key):
             clean_t = re.sub(r"【.*?】", "", novel_info["title"]).strip()
             if any(sep in clean_t for sep in ["〜", "～"]):
                 parts = re.split(r"[〜～]", clean_t)
                 main_part = parts[0].strip()
                 sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
-                main_en = translator.translate_single(main_part).replace("♪", "").strip()
-                sub_en = translator.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
-                novel_info["title_en"] = f"{main_en} - {sub_en}" if sub_en else main_en
+                main_en = sugoi.translate_single(main_part).replace("♪", "").strip()
+                sub_en = sugoi.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
+                title_en = f"{main_en} - {sub_en}" if sub_en else main_en
             else:
-                novel_info["title_en"] = translator.translate_single(clean_t).replace("♪", "").strip()
+                title_en = sugoi.translate_single(clean_t).replace("♪", "").strip()
 
-        if not novel_info.get("author_en"):
-            novel_info["author_en"] = translator.translate_single(novel_info["author"]).replace("♪", "").strip()
+            novel_info["title_en"] = title_en
+            if target_lang == "id" and qwen:
+                novel_info[title_meta_key] = qwen.translate_single_en_to_id(title_en)
+            else:
+                novel_info[title_meta_key] = title_en
 
-        if not novel_info.get("synopsis_en") and novel_info.get("synopsis"):
-            novel_info["synopsis_en"] = translator.translate_single(novel_info["synopsis"]).replace("♪", "").strip()
+        if not novel_info.get(author_meta_key):
+            author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
+            novel_info["author_en"] = author_en
+            if target_lang == "id" and qwen:
+                novel_info[author_meta_key] = qwen.translate_single_en_to_id(author_en)
+            else:
+                novel_info[author_meta_key] = author_en
+
+        if not novel_info.get(synopsis_meta_key) and novel_info.get("synopsis"):
+            short_syn = novel_info["synopsis"][:250].strip()
+            syn_en = sugoi.translate_single(short_syn).replace("♪", "").strip()
+            novel_info["synopsis_en"] = syn_en
+            if target_lang == "id" and qwen:
+                novel_info[synopsis_meta_key] = qwen.translate_single_en_to_id(syn_en)
+            else:
+                novel_info[synopsis_meta_key] = syn_en
 
         cache.save_novel_info(novel_info)
 
-        # Process chapters
+        # Process chapters sequentially (one chapter completely finished before the next)
         epub_chapters = []
         episodes_by_index = {ep["index"]: ep for ep in novel_info["episodes"]}
 
         for chap_i, idx in enumerate(selected_indices, start=1):
+            if job.cancelled:
+                print(f"[Job {job_id}] Cancel detected before chapter {chap_i}")
+                break
+
             if idx not in episodes_by_index:
                 continue
 
@@ -268,45 +285,77 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             job.currentChapter = chap_i
             job.chapterTitle = ep_title_ja
-            job.message = f"Processing Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
 
             # Check cache
-            cached_ep = cache.load_episode(ep_id, "sugoi_en")
+            cached_ep = cache.load_episode(ep_id, cache_flavor)
             if cached_ep:
                 epub_chapters.append(cached_ep)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Memuat dari cache..."
                 job.progressPercent = int((chap_i / job.totalChapters) * 90)
+                if job.cancelled:
+                    break
                 continue
 
-            # Fetch fresh
+            # Fetch fresh content from Kakuyomu
+            job.message = f"Mengunduh Bab {chap_i}/{job.totalChapters}: {ep_title_ja}"
             ep_content = scraper.get_episode_content(ep_id)
             paragraphs = ep_content["paragraphs"]
+            clean_texts = [p["clean"] for p in paragraphs]
             job.paragraphsTotal = len([p for p in paragraphs if not p["is_blank"]])
             job.paragraphsDone = 0
 
-            # Translate title
-            title_tl = clean_english_text(translator.translate_single(ep_title_ja))
+            chap_weight = 1.0 / job.totalChapters
+            chap_base = (chap_i - 1) / job.totalChapters
 
-            # Translate paragraphs
-            clean_texts = [p["clean"] for p in paragraphs]
+            if target_lang == "id" and qwen:
+                # ====== METODE JEMBATAN (BRIDGE: JP -> EN -> ID) ======
+                # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
+                en_title = clean_english_text(sugoi.translate_single(ep_title_ja))
+                en_texts = sugoi.translate_texts(clean_texts, batch_size=16)
 
-            def on_progress(done: int, total: int) -> None:
-                job.paragraphsDone = done
-                chap_weight = 1.0 / job.totalChapters
-                chap_base = (chap_i - 1) / job.totalChapters
-                current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
-                job.progressPercent = min(90, int(current_pct))
+                if job.cancelled:
+                    break
 
-            translated_texts = translator.translate_texts(
-                clean_texts,
-                batch_size=16,
-                progress_cb=on_progress
-            )
+                # Step 2: EN -> ID via Qwen 2.5 (Natural, fluent Indonesian)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (Qwen)..."
+                title_tl = qwen.translate_single_en_to_id(en_title)
 
+                def on_id_progress(done: int, total: int) -> None:
+                    job.paragraphsDone = done
+                    current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
+                    job.progressPercent = min(90, int(current_pct))
+
+                id_texts = qwen.translate_en_to_id(
+                    en_texts,
+                    batch_size=5,
+                    progress_cb=on_id_progress
+                )
+                final_translations = id_texts
+
+            else:
+                # ====== STANDARD JP -> EN (Sugoi V4) ======
+                job.message = f"Menerjemahkan Bab {chap_i}/{job.totalChapters}: {ep_title_ja}"
+                title_tl = clean_english_text(sugoi.translate_single(ep_title_ja))
+
+                def on_en_progress(done: int, total: int) -> None:
+                    job.paragraphsDone = done
+                    current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
+                    job.progressPercent = min(90, int(current_pct))
+
+                en_texts = sugoi.translate_texts(
+                    clean_texts,
+                    batch_size=16,
+                    progress_cb=on_en_progress
+                )
+                final_translations = [clean_english_text(t) for t in en_texts]
+
+            # Assemble full chapter data
             chap_paras = []
-            for p_info, tl_text in zip(paragraphs, translated_texts):
+            for p_info, tl_text in zip(paragraphs, final_translations):
                 chap_paras.append({
                     "ja": p_info["raw"],
-                    "tl": clean_english_text(tl_text),
+                    "tl": tl_text.strip(),
                     "is_blank": p_info["is_blank"]
                 })
 
@@ -317,13 +366,27 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 "title_tl": title_tl,
                 "paragraphs": chap_paras
             }
-            cache.save_episode(ep_id, "sugoi_en", chapter_data)
+            cache.save_episode(ep_id, cache_flavor, chapter_data)
             epub_chapters.append(chapter_data)
             job.progressPercent = int((chap_i / job.totalChapters) * 90)
 
+            # Check if user clicked cancel during or right after this chapter
+            if job.cancelled:
+                print(f"[Job {job_id}] Cancel detected after completing chapter {chap_i}")
+                break
+
+        # Check if cancelled and how many chapters were fully completed
+        if job.cancelled:
+            if not epub_chapters:
+                job.status = "error"
+                job.error = "Translasi dibatalkan oleh pengguna sebelum bab pertama selesai."
+                job.message = "Dibatalkan (0 bab selesai)."
+                return
+            else:
+                job.message = f"Translasi dibatalkan. Merakit {len(epub_chapters)} bab yang telah selesai..."
+
         # Build EPUB
-        job.message = "Assembling EPUB package..."
-        builder = EPUBBuilder(novel_info, mode=req.mode, target_lang="en")
+        builder = EPUBBuilder(novel_info, mode=req.mode, target_lang=target_lang)
         for chap in epub_chapters:
             builder.add_chapter(
                 index=chap["index"],
@@ -333,8 +396,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             )
 
         # Output filename
-        eng_title = novel_info.get("title_en", "Novel")
-        clean_title = sanitize_filename(eng_title)
+        lang_title = novel_info.get(title_meta_key) or novel_info.get("title_en", "Novel")
+        clean_title = sanitize_filename(lang_title)
         clean_title = re.sub(r"(\s*-\s*)+", " - ", clean_title)
         if " - " in clean_title:
             clean_title = clean_title.split(" - ")[0].strip()
@@ -343,14 +406,19 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         if len(clean_title) > 75:
             clean_title = clean_title[:73].rsplit(" ", 1)[0].rstrip(" ,-:")
 
-        if len(selected_indices) == 1:
+        if job.cancelled:
+            first_idx = epub_chapters[0]["index"]
+            last_idx = epub_chapters[-1]["index"]
+            chap_suffix = f" - Bab {first_idx}-{last_idx} (Dibatalkan - {len(epub_chapters)} Bab)"
+        elif len(selected_indices) == 1:
             chap_suffix = f" - Chapter {selected_indices[0]}"
         elif len(selected_indices) < total_eps:
             chap_suffix = f" - Chapters {selected_indices[0]}-{selected_indices[-1]}"
         else:
             chap_suffix = " - Complete"
 
-        filename = f"{clean_title}{chap_suffix}.epub"
+        lang_suffix = " (Bahasa Indonesia)" if target_lang == "id" else ""
+        filename = f"{clean_title}{chap_suffix}{lang_suffix}.epub"
         output_dir = os.path.abspath("output")
         os.makedirs(output_dir, exist_ok=True)
         final_file_path = os.path.join(output_dir, filename)
@@ -361,7 +429,10 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         job.status = "completed"
         job.filename = filename
         job.downloadUrl = f"/api/download/{filename}"
-        job.message = f"Finished! EPUB successfully generated."
+        if job.cancelled:
+            job.message = f"Translasi dibatalkan! EPUB berhasil dibuat untuk {len(epub_chapters)} bab yang selesai."
+        else:
+            job.message = f"Selesai! File EPUB berhasil dibuat."
 
     except Exception as e:
         job.status = "error"
@@ -387,6 +458,17 @@ def get_job_status(job_id: str) -> JobState:
     if job_id not in JOBS:
         raise HTTPException(status_code=404, detail="Job not found")
     return JOBS[job_id]
+
+
+@app.post("/api/jobs/{job_id}/cancel", response_model=JobState)
+def cancel_job(job_id: str) -> JobState:
+    if job_id not in JOBS:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job = JOBS[job_id]
+    if job.status in ("running", "pending"):
+        job.cancelled = True
+        job.message = "Membatalkan translasi... Menyelesaikan bab saat ini dan merakit EPUB..."
+    return job
 
 
 @app.get("/api/download/{filename}")

@@ -101,6 +101,20 @@ export class App implements OnDestroy {
       });
   }
 
+  onCancelJob(): void {
+    const currentJob = this.job();
+    if (currentJob && (currentJob.status === 'running' || currentJob.status === 'pending')) {
+      this.apiService.cancelJob(currentJob.jobId).subscribe({
+        next: (updated: JobState) => {
+          this.job.set(updated);
+        },
+        error: (err: { message?: string }) => {
+          console.warn('Failed to cancel job:', err);
+        }
+      });
+    }
+  }
+
   onReset(): void {
     this.pollSubscription?.unsubscribe();
     this.job.set(null);

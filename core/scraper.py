@@ -102,45 +102,69 @@ class KakuyomuScraper:
         episodes = []
         seen_ids = set()
 
-        # Modern Kakuyomu TOC structure
-        toc_items = soup.find_all("a", href=re.compile(rf"/works/{self.work_id}/episodes/(\d+)"))
-        
-        idx = 1
-        for a in toc_items:
-            href = a.get("href", "")
-            match = re.search(rf"/works/{self.work_id}/episodes/(\d+)", href)
-            if not match:
-                continue
-            ep_id = match.group(1)
-            if ep_id in seen_ids:
-                continue
+        # Approach A: Parse Next.js Apollo state (__NEXT_DATA__)
+        # Essential for novels with accordions / pagination (> 7 episodes)
+        next_data_el = soup.find("script", id="__NEXT_DATA__")
+        if next_data_el and next_data_el.string:
+            try:
+                import json
+                nd = json.loads(next_data_el.string)
+                apollo = nd.get("props", {}).get("pageProps", {}).get("__APOLLO_STATE__", {})
 
-            # Check if this is the "Read from Chapter 1" banner button
-            if "1話目から読む" in a.get_text():
-                continue
+                for k, v in apollo.items():
+                    if isinstance(v, dict) and "episodeUnions" in v:
+                        for item in v["episodeUnions"]:
+                            ref = item.get("__ref")
+                            if ref and ref in apollo:
+                                ep = apollo[ref]
+                                if ep.get("__typename") == "Episode":
+                                    ep_id = str(ep.get("id"))
+                                    if ep_id not in seen_ids:
+                                        seen_ids.add(ep_id)
+                                        episodes.append({
+                                            "index": len(episodes) + 1,
+                                            "id": ep_id,
+                                            "title": ep.get("title") or f"Chapter {len(episodes) + 1}",
+                                            "url": f"https://kakuyomu.jp/works/{self.work_id}/episodes/{ep_id}",
+                                            "date": ep.get("publishedAt", "")
+                                        })
+            except Exception as e:
+                print(f"[KakuyomuScraper] Apollo TOC parsing warning: {e}")
 
-            seen_ids.add(ep_id)
+        # Approach B (Fallback): Parse raw HTML <a> tags if __NEXT_DATA__ is absent
+        if not episodes:
+            toc_items = soup.find_all("a", href=re.compile(rf"/works/{self.work_id}/episodes/(\d+)"))
+            idx = 1
+            for a in toc_items:
+                href = a.get("href", "")
+                match = re.search(rf"/works/{self.work_id}/episodes/(\d+)", href)
+                if not match:
+                    continue
+                ep_id = match.group(1)
+                if ep_id in seen_ids:
+                    continue
+                if "1話目から読む" in a.get_text():
+                    continue
 
-            # Find title inside title container or use a text
-            title_node = a.select_one("[class*='WorkTocSection_title'], [class*='title']")
-            if title_node:
-                ep_title = title_node.get_text(strip=True)
-            else:
-                ep_title = a.get_text(strip=True)
-                # Strip dates like 2026年8月29日公開
-                ep_title = re.sub(r"\d{4}年\d{1,2}月\d{1,2}日.*$", "", ep_title).strip()
+                seen_ids.add(ep_id)
+                title_node = a.select_one("[class*='WorkTocSection_title'], [class*='title']")
+                if title_node:
+                    ep_title = title_node.get_text(strip=True)
+                else:
+                    ep_title = a.get_text(strip=True)
+                    ep_title = re.sub(r"\d{4}年\d{1,2}月\d{1,2}日.*$", "", ep_title).strip()
 
-            date_node = a.select_one("[class*='WorkTocSection_date'], time")
-            ep_date = date_node.get_text(strip=True) if date_node else ""
+                date_node = a.select_one("[class*='WorkTocSection_date'], time")
+                ep_date = date_node.get_text(strip=True) if date_node else ""
 
-            episodes.append({
-                "index": idx,
-                "id": ep_id,
-                "title": ep_title or f"Chapter {idx}",
-                "url": f"https://kakuyomu.jp/works/{self.work_id}/episodes/{ep_id}",
-                "date": ep_date
-            })
-            idx += 1
+                episodes.append({
+                    "index": idx,
+                    "id": ep_id,
+                    "title": ep_title or f"Chapter {idx}",
+                    "url": f"https://kakuyomu.jp/works/{self.work_id}/episodes/{ep_id}",
+                    "date": ep_date
+                })
+                idx += 1
 
         self._novel_info = {
             "work_id": self.work_id,
@@ -172,11 +196,17 @@ class KakuyomuScraper:
         if not body_el:
             raise RuntimeError(f"Could not find episode body content at {ep_url}")
 
+        # Clean ruby readings in one fast pass
+        body_clean_html = re.sub(r"<(rt|rp)[^>]*>.*?</\1>", "", str(body_el), flags=re.DOTALL)
+        clean_body = BeautifulSoup(body_clean_html, "html.parser")
+
+        raw_p_list = body_el.find_all("p")
+        clean_p_list = clean_body.find_all("p")
+
         paragraphs = []
-        for p in body_el.find_all("p"):
-            # Check for empty paragraph / scene break
-            raw_text = p.get_text().strip()
-            if not raw_text or p.find("br") and not raw_text:
+        for p_raw, p_clean in zip(raw_p_list, clean_p_list):
+            raw_text = p_raw.get_text().strip()
+            if not raw_text or (p_raw.find("br") and not raw_text):
                 paragraphs.append({
                     "raw": "",
                     "clean": "",
@@ -184,12 +214,7 @@ class KakuyomuScraper:
                 })
                 continue
 
-            # Create clean version without ruby readings for translator
-            p_clean_soup = BeautifulSoup(str(p), "html.parser")
-            for tag in p_clean_soup.find_all(["rt", "rp"]):
-                tag.decompose()
-            clean_text = p_clean_soup.get_text().strip()
-
+            clean_text = p_clean.get_text().strip()
             paragraphs.append({
                 "raw": raw_text,
                 "clean": clean_text,
