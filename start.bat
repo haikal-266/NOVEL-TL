@@ -16,10 +16,9 @@ start "NOVEL TL - [BE] Backend Server (Port 8000)" cmd /k "cd /d "%~dp0" && pyth
 echo [2/2] Menjalankan Frontend (Angular di http://localhost:4200)...
 start "NOVEL TL - [FE] Frontend Angular (Port 4200)" cmd /k "cd /d "%~dp0web" && npm start"
 
-:: 3. Tunggu sebentar lalu buka browser
+:: 3. Tunggu sampai KEDUA server benar-benar UP dan running
 echo.
-echo Menunggu inisialisasi... Membuka browser di http://localhost:4200
-timeout /t 4 >nul
+python core\wait_ready.py
 start http://localhost:4200
 
 echo.
