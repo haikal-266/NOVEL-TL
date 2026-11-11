@@ -8,7 +8,9 @@
     "dev": "start.bat",
     "be": "python server.py",
     "fe": "npm --prefix web start",
-    "build": "npm --prefix web run build"
+    "build": "npm --prefix web run build",
+    "mobile": "npm --prefix mobile start",
+    "mobile:android": "npm --prefix mobile run android"
   }
 }
 
