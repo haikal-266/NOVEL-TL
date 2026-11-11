@@ -138,16 +138,18 @@ class SeaLLMTranslator:
     def __init__(
         self,
         model_path: Optional[str] = None,
-        n_threads: int = 4,
+        n_threads: Optional[int] = None,
         n_ctx: int = 2048
     ):
         if not model_path:
             model_path = ensure_seallm_downloaded()
 
-        print(f"[SeaLLM 7B] Memuat model {os.path.basename(model_path)} (threads={n_threads}, ctx={n_ctx})...")
+        # Reserve at least 1 core for OS / FastAPI server responsiveness
+        cpu_threads = n_threads or min(4, max(1, (os.cpu_count() or 4) - 1))
+        print(f"[SeaLLM 7B] Memuat model {os.path.basename(model_path)} (threads={cpu_threads}, ctx={n_ctx})...")
         self.llm = Llama(
             model_path=model_path,
-            n_threads=n_threads,
+            n_threads=cpu_threads,
             n_ctx=n_ctx,
             n_batch=512,
             verbose=False
@@ -223,8 +225,9 @@ class SeaLLMTranslator:
         total = len(valid_indices)
         processed = 0
 
-        chunk_size = max(1, min(batch_size, 5))
+        chunk_size = max(1, min(batch_size, 2))
         for b_start in range(0, total, chunk_size):
+            time.sleep(0.03)  # Yield CPU to allow FastAPI event loop to handle polling
             batch_idxs = valid_indices[b_start : b_start + chunk_size]
             batch_texts = [texts[idx].strip() for idx in batch_idxs]
 

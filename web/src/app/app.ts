@@ -1,6 +1,6 @@
 import { Component, signal, inject, OnDestroy } from '@angular/core';
-import { Subscription, interval } from 'rxjs';
-import { switchMap, takeWhile } from 'rxjs/operators';
+import { Subscription, interval, of } from 'rxjs';
+import { switchMap, takeWhile, catchError, filter } from 'rxjs/operators';
 
 import {
   NovelInspectResponse,
@@ -81,7 +81,15 @@ export class App implements OnDestroy {
 
     this.pollSubscription = interval(1500)
       .pipe(
-        switchMap(() => this.apiService.getJobStatus(jobId)),
+        switchMap(() =>
+          this.apiService.getJobStatus(jobId).pipe(
+            catchError((err) => {
+              console.warn('Poll request delayed/errored, retrying...', err);
+              return of(null);
+            })
+          )
+        ),
+        filter((job): job is JobState => job !== null),
         takeWhile(
           (job: JobState) => job.status === 'pending' || job.status === 'running',
           true
