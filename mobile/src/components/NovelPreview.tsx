@@ -33,6 +33,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
   const [customRange, setCustomRange] = useState('1-5');
   const [mode, setMode] = useState<TranslationMode>('translated');
   const [targetLang, setTargetLang] = useState<TargetLanguage>('en');
+  const [forceTranslate, setForceTranslate] = useState(false);
 
   const handleGenerate = () => {
     if (isGenerating) return;
@@ -42,6 +43,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
       customRange: rangeType === 'range' ? customRange.trim() : undefined,
       mode,
       targetLang,
+      forceTranslate,
     });
   };
 
@@ -60,12 +62,12 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
 
         {/* Full Title */}
         <Text style={styles.novelTitle}>
-          {novel.titleEn || novel.titleJa || 'Japanese Web Novel'}
+          {(targetLang === 'id' && novel.titleId) ? novel.titleId : (novel.titleEn || novel.titleJa || 'Japanese Web Novel')}
         </Text>
 
         {/* Author & ID */}
         <Text style={styles.novelSub} numberOfLines={1}>
-          {novel.authorEn || novel.authorJa} • ID: {novel.workId}
+          {(targetLang === 'id' && novel.authorId) ? novel.authorId : (novel.authorEn || novel.authorJa)} • ID: {novel.workId}
         </Text>
       </View>
 
@@ -242,6 +244,23 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         </View>
       </View>
 
+      {/* Force Re-translate Checkbox */}
+      <TouchableOpacity
+        style={styles.checkboxRow}
+        onPress={() => setForceTranslate(!forceTranslate)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.checkboxBox, forceTranslate && styles.checkboxBoxActive]}>
+          {forceTranslate && <Feather name="check" size={13} color="#121212" />}
+        </View>
+        <View style={styles.checkboxTextCol}>
+          <Text style={styles.checkboxTitle}>Paksa Terjemahkan Ulang (Abaikan Cache)</Text>
+          <Text style={styles.checkboxSubtitle}>
+            AI akan memproses bab dari awal meski ada riwayat
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Generate CTA Button */}
       <TouchableOpacity
         style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
@@ -321,20 +340,20 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   section: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: THEME.colors.espresso,
     letterSpacing: 0.4,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   sectionSub: {
     fontSize: 10,
@@ -350,9 +369,9 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.thin,
     borderColor: THEME.border.color,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
   },
   optionCardActive: {
     backgroundColor: THEME.colors.lime,
@@ -443,7 +462,7 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.thin,
     borderColor: THEME.border.color,
     borderRadius: 8,
-    padding: 9,
+    padding: 12,
   },
   gridCardActive: {
     backgroundColor: THEME.colors.lime,
@@ -478,6 +497,39 @@ const styles = StyleSheet.create({
   },
   radioDotActive: {
     backgroundColor: '#121212',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#121212',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxBoxActive: {
+    backgroundColor: THEME.colors.lime,
+  },
+  checkboxTextCol: {
+    flex: 1,
+  },
+  checkboxTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#121212',
+  },
+  checkboxSubtitle: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#6B7280',
+    marginTop: 1,
   },
   generateBtn: {
     flexDirection: 'row',

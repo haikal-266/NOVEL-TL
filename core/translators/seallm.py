@@ -30,7 +30,8 @@ SYSTEM_PROMPT_EN_ID = (
     "     Wajib gunakan kata ganti perempuan ('ia', 'dia perempuan', 'gadis itu', 'putri'), JANGAN tertukar menjadi laki-laki ('dia/pria')!\n"
     "   - Karakter Laki-laki: tanda '少年/男/彼/兄/弟', kata ganti '俺/僕', partikel dialog maskulin '~ぜ/~ぞ/~だろ'.\n"
     "     Gunakan kata ganti laki-laki ('ia', 'pemuda itu', 'pria itu').\n"
-    "2. Gunakan kata ganti dialog 'aku-kamu' yang akrab dan luwes. Hindari terjemahan kaku kata per kata.\n\n"
+    "2. Gunakan kata ganti dialog 'aku-kamu' yang akrab dan luwes. Hindari terjemahan kaku kata per kata.\n"
+    "3. DILARANG KERAS menyalin atau menyertakan teks bahasa Jepang/kanji/hiragana/katakana ke dalam hasil terjemahan. Teks asli hanya petunjuk konteks; SELURUH kalimat hasil akhir WAJIB 100% berbahasa Indonesia.\n\n"
     "Format output WAJIB bernomor sama:\n"
     "[1] <hasil terjemahan Indonesia 1>\n"
     "[2] <hasil terjemahan Indonesia 2>\n"
@@ -159,6 +160,10 @@ class SeaLLMTranslator:
         """Strip conversational filler, meta-comments, or accidental refusal notes."""
         text = raw.strip()
 
+        # Remove leaked gender hints or context snippets
+        text = re.sub(r"\(Konteks asli:.*?\)", "", text).strip()
+        text = re.sub(r"\[(Karakter:\s*)?(Perempuan|Laki-laki)\]", "", text, flags=re.IGNORECASE).strip()
+
         meta_patterns = [
             r"^(Teks ini|Teks di atas|Kalimat ini)\s+sudah\s+(dalam\s+)?bahasa\s+indonesia.*$",
             r"^.*tidak\s+perlu\s+diterjemahkan.*$",
@@ -214,7 +219,11 @@ class SeaLLMTranslator:
             stop=["<|im_end|>", "<|endoftext|>"]
         )
 
-        return self._clean_output(output["choices"][0]["text"], fallback_orig=text)
+        res = self._clean_output(output["choices"][0]["text"], fallback_orig=text)
+        # If output accidentally still contains Japanese characters, retry purely English without Japanese context
+        if ja_context and re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", res):
+            return self.translate_single_en_to_id(text, ja_context="")
+        return res
 
     def translate_en_to_id(
         self,
@@ -281,7 +290,11 @@ class SeaLLMTranslator:
 
                     if len(parsed_dict) == len(batch_texts):
                         for i, idx in enumerate(batch_idxs):
-                            results[idx] = self._clean_output(parsed_dict.get(i + 1, ""), fallback_orig=batch_texts[i])
+                            tl = self._clean_output(parsed_dict.get(i + 1, ""), fallback_orig=batch_texts[i])
+                            # If result accidentally has leftover Japanese characters, re-translate clean
+                            if re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", tl):
+                                tl = self.translate_single_en_to_id(batch_texts[i], ja_context="")
+                            results[idx] = tl
                     else:
                         for i, idx in enumerate(batch_idxs):
                             ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""

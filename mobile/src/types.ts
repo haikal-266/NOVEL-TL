@@ -11,8 +11,10 @@ export interface NovelInspectResponse {
   currentEpisodeIndex: number | null;
   titleJa: string;
   titleEn: string | null;
+  titleId?: string | null;
   authorJa: string;
   authorEn: string | null;
+  authorId?: string | null;
   synopsis: string;
   synopsisEn?: string | null;
   url: string;
@@ -30,6 +32,7 @@ export interface GenerateRequest {
   customRange?: string;
   mode: TranslationMode;
   targetLang?: TargetLanguage;
+  forceTranslate?: boolean;
 }
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'error';

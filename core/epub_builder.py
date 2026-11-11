@@ -18,9 +18,17 @@ def clean_english_text(text: str) -> str:
         return ""
     # Remove music note symbols often produced by translation models for wave dashes
     text = text.replace("♪", "").replace("〜", " - ").replace("～", " - ")
-    # Replace Japanese corner brackets with standard English quotes
+    # Replace Japanese corner brackets and decorative brackets
     text = text.replace("「", '"').replace("」", '"')
     text = text.replace("『", "'").replace("』", "'")
+    text = text.replace("【", "[").replace("】", "]")
+    text = text.replace("〔", "[").replace("〕", "]")
+    text = text.replace("〈", "<").replace("〉", ">")
+    text = text.replace("《", "<<").replace("》", ">>")
+    # Fullwidth Japanese punctuation to standard ASCII
+    text = text.replace("！", "!").replace("？", "?")
+    text = text.replace("（", "(").replace("）", ")")
+    text = text.replace("・", " · ").replace("：", ": ")
     # Replace fullwidth space
     text = text.replace("\u3000", " ")
     # Clean redundant spaces

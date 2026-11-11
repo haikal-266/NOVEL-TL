@@ -52,8 +52,10 @@ class NovelInspectResponse(BaseModel):
     currentEpisodeIndex: Optional[int] = None
     titleJa: str
     titleEn: Optional[str] = None
+    titleId: Optional[str] = None
     authorJa: str
     authorEn: Optional[str] = None
+    authorId: Optional[str] = None
     synopsis: str
     synopsisEn: Optional[str] = None
     url: str
@@ -66,6 +68,7 @@ class GenerateRequest(BaseModel):
     customRange: Optional[str] = None  # e.g. "1-5" or "1,2,3"
     mode: Literal["translated", "bilingual", "raw"] = "translated"
     targetLang: Literal["en", "id"] = "en"
+    forceTranslate: bool = False
 
 class JobState(BaseModel):
     jobId: str
@@ -170,6 +173,26 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
         novel_info = scraper.get_novel_info()
         cache.save_novel_info(novel_info)
 
+    # Immediately translate novel title and author to English if not yet translated
+    if not novel_info.get("title_en"):
+        try:
+            sugoi = get_sugoi_translator()
+            clean_t = re.sub(r"【.*?】", "", novel_info.get("title", "")).strip()
+            if any(sep in clean_t for sep in ["〜", "～"]):
+                parts = re.split(r"[〜～]", clean_t)
+                main_part = parts[0].strip()
+                sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
+                main_en = sugoi.translate_single(main_part).replace("♪", "").strip()
+                sub_en = sugoi.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
+                novel_info["title_en"] = f"{main_en} - {sub_en}" if sub_en else main_en
+            else:
+                novel_info["title_en"] = sugoi.translate_single(clean_t).replace("♪", "").strip()
+
+            novel_info["author_en"] = sugoi.translate_single(novel_info.get("author", "")).replace("♪", "").strip()
+            cache.save_novel_info(novel_info)
+        except Exception as e:
+            print(f"[Inspect] Title translation skipped: {e}")
+
     curr_idx = None
     if episode_id:
         for ep in novel_info.get("episodes", []):
@@ -193,8 +216,10 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
         currentEpisodeIndex=curr_idx,
         titleJa=novel_info.get("title", ""),
         titleEn=novel_info.get("title_en") or novel_info.get("title", ""),
+        titleId=novel_info.get("title_id"),
         authorJa=novel_info.get("author", "Unknown Author"),
         authorEn=novel_info.get("author_en") or novel_info.get("author", "Unknown Author"),
+        authorId=novel_info.get("author_id"),
         synopsis=novel_info.get("synopsis", ""),
         synopsisEn=novel_info.get("synopsis_en") or novel_info.get("synopsis", ""),
         url=novel_info.get("url", ""),
@@ -248,6 +273,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             selected_indices = sorted(list(indices_set)) or [1]
 
         target_lang = getattr(req, "targetLang", "en") or "en"
+        force_translate = getattr(req, "forceTranslate", False) or False
         cache_flavor = "bridge_id" if target_lang == "id" else "sugoi_en"
 
         job.totalChapters = len(selected_indices)
@@ -257,12 +283,12 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         sugoi = get_sugoi_translator()
         seallm = get_seallm_translator(job=job) if target_lang == "id" else None
 
-        # Translate metadata if not present
+        # Translate metadata if not present (or if forceTranslate is requested)
         title_meta_key = f"title_{target_lang}"
         author_meta_key = f"author_{target_lang}"
         synopsis_meta_key = f"synopsis_{target_lang}"
 
-        if not novel_info.get(title_meta_key):
+        if force_translate or not novel_info.get(title_meta_key):
             clean_t = re.sub(r"【.*?】", "", novel_info["title"]).strip()
             if any(sep in clean_t for sep in ["〜", "～"]):
                 parts = re.split(r"[〜～]", clean_t)
@@ -280,7 +306,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             else:
                 novel_info[title_meta_key] = title_en
 
-        if not novel_info.get(author_meta_key):
+        if force_translate or not novel_info.get(author_meta_key):
             author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
             novel_info["author_en"] = author_en
             if target_lang == "id" and seallm:
@@ -309,10 +335,11 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             job.currentChapter = chap_i
             job.chapterTitle = ep_title_ja
 
-            # Check cache
-            cached_ep = cache.load_episode(ep_id, cache_flavor)
+            # Check cache (skip if forceTranslate is true)
+            cached_ep = None if force_translate else cache.load_episode(ep_id, cache_flavor)
             if cached_ep:
                 epub_chapters.append(cached_ep)
+                job.chapterTitle = cached_ep.get("title_tl") or ep_title_ja
                 job.message = f"Bab {chap_i}/{job.totalChapters}: Memuat dari cache..."
                 job.progressPercent = int((chap_i / job.totalChapters) * 90)
                 if job.cancelled:
@@ -343,6 +370,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 # Step 2: EN -> ID via SeaLLM 1.5B (Natural, literary Indonesian with speech markers)
                 job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (SeaLLM 1.5B)..."
                 title_tl = seallm.translate_single_en_to_id(en_title, ja_context=ep_title_ja)
+                job.chapterTitle = title_tl
 
                 def on_id_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
@@ -361,6 +389,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 # ====== STANDARD JP -> EN (Sugoi V4) ======
                 job.message = f"Menerjemahkan Bab {chap_i}/{job.totalChapters}: {ep_title_ja}"
                 title_tl = clean_english_text(sugoi.translate_single(ep_title_ja))
+                job.chapterTitle = title_tl
 
                 def on_en_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
@@ -448,6 +477,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         final_file_path = os.path.join(output_dir, filename)
 
         builder.build_and_save(final_file_path)
+
+        if epub_chapters:
+            job.chapterTitle = epub_chapters[-1].get("title_tl") or job.chapterTitle
 
         job.progressPercent = 100
         job.status = "completed"

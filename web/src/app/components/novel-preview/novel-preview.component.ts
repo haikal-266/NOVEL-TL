@@ -25,6 +25,7 @@ export class NovelPreviewComponent {
   customRange = '1-5';
   mode: TranslationMode = 'translated';
   targetLang: TargetLanguage = 'en';
+  forceTranslate = false;
 
   ngOnInit(): void {
     // If no episode in URL, default to range or all
@@ -54,7 +55,8 @@ export class NovelPreviewComponent {
       rangeType: this.rangeType,
       customRange: this.rangeType === 'range' ? this.customRange.trim() : undefined,
       mode: this.mode,
-      targetLang: this.targetLang
+      targetLang: this.targetLang,
+      forceTranslate: this.forceTranslate
     };
     this.startGenerate.emit(request);
   }
