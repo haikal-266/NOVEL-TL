@@ -32,9 +32,9 @@ DEFAULT_CSS = """
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-    line-height: 1.85;
-    margin: 5% 6%;
-    font-size: 1.05em;
+    line-height: 1.45;
+    margin: 2% 4%;
+    font-size: 1.0em;
     color: #1a1a1a;
     background-color: transparent;
 }
@@ -56,76 +56,79 @@ body {
 }
 
 h1.chapter-title {
-    font-size: 1.55em;
+    font-size: 1.35em;
     font-weight: 700;
     text-align: center;
-    margin: 1.8em 0 1.2em 0;
-    padding-bottom: 0.5em;
+    margin: 0.8em 0 0.6em 0;
+    padding-bottom: 0.4em;
     border-bottom: 1px solid #cbd5e1;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 h1.title-heading {
-    font-size: 1.8em;
+    font-size: 1.6em;
     font-weight: bold;
     text-align: center;
-    margin: 2em 0 1em 0;
-    padding-bottom: 0.6em;
+    margin: 1.5em 0 0.8em 0;
+    padding-bottom: 0.5em;
     border-bottom: 2px solid #cbd5e1;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 .novel-meta {
     text-align: center;
-    margin-bottom: 2.5em;
-    font-size: 0.95em;
+    margin-bottom: 1.8em;
+    font-size: 0.9em;
     color: #64748b;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 1.5em;
+    padding-bottom: 1.2em;
 }
 
 .novel-meta p {
     text-indent: 0 !important;
-    margin: 0.4em 0;
+    margin: 0.3em 0;
 }
 
-/* Standard paragraph */
+/* Standard paragraph: rapat dan nyaman dibaca */
 p.story-p {
     text-indent: 1.2em;
     margin-top: 0;
-    margin-bottom: 0.65em;
+    margin-bottom: 0.25em;
     word-break: break-word;
 }
 
-/* Blank line / scene pause */
+/* Blank line / scene pause: jeda adegan halus tanpa ruang kosong raksasa */
 p.blank-line {
     text-indent: 0;
-    margin: 1.2em 0;
-    height: 0.5em;
+    margin: 0.35em 0;
+    height: 0.3em;
+    font-size: 0.3em;
+    line-height: 0.3em;
 }
 
 /* Dialogue lines */
 p.dialogue {
-    text-indent: 0.4em;
-    margin-bottom: 0.7em;
+    text-indent: 0.2em;
+    margin-top: 0;
+    margin-bottom: 0.25em;
 }
 
 /* Bilingual block */
 div.bilingual-block {
-    margin-bottom: 1.1em;
+    margin-bottom: 0.6em;
 }
 
 .ja-text {
-    font-size: 0.88em;
+    font-size: 0.85em;
     color: #64748b;
-    line-height: 1.55;
-    margin-bottom: 0.25em;
+    line-height: 1.4;
+    margin-bottom: 0.15em;
     text-indent: 1em;
 }
 
 .tl-text {
-    font-size: 1.05em;
-    line-height: 1.8;
+    font-size: 1.0em;
+    line-height: 1.45;
     text-indent: 1.2em;
 }
 
@@ -140,7 +143,7 @@ div.bilingual-block {
 
 .synopsis-box p {
     text-indent: 0;
-    margin: 0.8em 0;
+    margin: 0.6em 0;
 }
 """
 
@@ -275,13 +278,23 @@ class EPUBBuilder:
 
         body_html = [f'<h1 class="chapter-title">{html.escape(display_title)}</h1>']
 
-        for p in paragraphs:
-            if p.get("is_blank"):
-                body_html.append('<p class="blank-line">&nbsp;</p>')
-                continue
+        last_was_blank = True  # Suppress leading blank lines right below the title
 
+        for p in paragraphs:
+            is_blank = p.get("is_blank", False)
             ja_text = p.get("ja", "").strip()
             tl_text = clean_english_text(p.get("tl", "").strip())
+
+            # Check if paragraph has actual content
+            has_content = bool(tl_text or ja_text)
+            if is_blank or not has_content:
+                # Collapse multiple consecutive blank lines into at most one subtle pause
+                if not last_was_blank:
+                    body_html.append('<p class="blank-line">&nbsp;</p>')
+                    last_was_blank = True
+                continue
+
+            last_was_blank = False
 
             if self.mode == "raw":
                 is_diag = ja_text.startswith("「") or ja_text.startswith("『")
@@ -296,16 +309,21 @@ class EPUBBuilder:
                     f'</div>'
                 )
 
-            else:  # translated mode (Pure English)
+            else:  # translated mode (Pure English / Indonesian)
                 text_to_show = tl_text or ja_text
                 is_diag = (
                     text_to_show.startswith('"')
                     or text_to_show.startswith("'")
                     or text_to_show.startswith("“")
                     or text_to_show.startswith("‘")
+                    or text_to_show.startswith("「")
                 )
                 cls = "dialogue" if is_diag else "story-p"
                 body_html.append(f'<p class="{cls}">{html.escape(text_to_show)}</p>')
+
+        # Suppress trailing blank lines before closing the chapter
+        if body_html and body_html[-1] == '<p class="blank-line">&nbsp;</p>':
+            body_html.pop()
 
         full_html = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
