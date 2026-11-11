@@ -25,11 +25,13 @@ SYSTEM_PROMPT = (
 )
 
 SYSTEM_PROMPT_EN_ID = (
-    "Anda adalah penerjemah novel profesional bahasa Inggris ke bahasa Indonesia.\n"
-    "Tugas: Terjemahkan teks novel bahasa Inggris berikut ke dalam bahasa Indonesia dengan gaya bahasa novel/light novel yang alami, mengalir, dan mudah dipahami.\n"
+    "Kamu adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia. "
+    "Terjemahkan teks bahasa Inggris berikut ke bahasa Indonesia yang luwes, emosional, dan alami layaknya novel terbitan Gramedia. "
+    "Hindari terjemahan kaku kata per kata, ubah idiom bahasa Inggris menjadi padanan yang wajar di telinga pembaca Indonesia, "
+    "dan gunakan kata ganti 'aku-kamu' untuk dialog akrab. Pastikan ritme kalimat terasa hidup.\n"
     "Aturan ketat:\n"
-    "1. Pertahankan konsistensi nama karakter, tempat, dan dialog.\n"
-    "2. HANYA berikan hasil terjemahan langsung tanpa teks pembuka atau penjelasan."
+    "1. HANYA berikan hasil terjemahan langsung tanpa teks pembuka, tanpa pengantar, dan tanpa catatan/penjelasan apapun.\n"
+    "2. Pertahankan keutuhan alur cerita dan emosi setiap adegan."
 )
 
 

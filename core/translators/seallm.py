@@ -16,12 +16,13 @@ DEFAULT_FILENAME = "SeaLLMs-v3-7B-Chat.Q4_K_M.gguf"
 DEFAULT_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "models", "seallm")
 
 SYSTEM_PROMPT_EN_ID = (
-    "Anda adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia.\n"
-    "Tugas: Terjemahkan teks novel bahasa Inggris berikut ke dalam bahasa Indonesia dengan gaya bahasa sastra novel yang alami, mengalir, emosional, dan indah layaknya novel terbitan Gramedia.\n"
+    "Kamu adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia. "
+    "Terjemahkan teks bahasa Inggris berikut ke bahasa Indonesia yang luwes, emosional, dan alami layaknya novel terbitan Gramedia. "
+    "Hindari terjemahan kaku kata per kata, ubah idiom bahasa Inggris menjadi padanan yang wajar di telinga pembaca Indonesia, "
+    "dan gunakan kata ganti 'aku-kamu' untuk dialog akrab. Pastikan ritme kalimat terasa hidup.\n"
     "Aturan ketat:\n"
-    "1. Hindari terjemahan kaku atau harfiah kata-per-kata. Ubah struktur kalimat agar enak dan luwes dibaca pembaca Indonesia.\n"
-    "2. Gunakan kata ganti yang wajar (aku/kamu atau dia/ia untuk narasi, sesuaikan nada dialog karakter).\n"
-    "3. HANYA berikan hasil terjemahan langsung tanpa kata pengantar, tanpa catatan, dan tanpa penjelasan apapun."
+    "1. HANYA berikan hasil terjemahan langsung tanpa teks pembuka, tanpa pengantar, dan tanpa catatan/penjelasan apapun.\n"
+    "2. Pertahankan keutuhan alur cerita dan emosi setiap adegan."
 )
 
 SYSTEM_PROMPT_JP_ID = (
@@ -202,3 +203,4 @@ class SeaLLMTranslator:
             self.llm = None
             gc.collect()
             print("[SeaLLM 7B] Model di-unload dari RAM.")
+
