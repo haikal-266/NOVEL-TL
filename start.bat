@@ -1,24 +1,34 @@
 @echo off
-title Novel TL - EPUB Generator
+title NOVEL TL - Launcher
 cd /d "%~dp0"
 
 echo ========================================================
-echo   NOVEL TL - EPUB GENERATOR (SUGOI AI)
+echo    NOVEL TL - LOCAL AI EPUB GENERATOR
+echo    Running Frontend (Angular) & Backend (FastAPI)...
 echo ========================================================
 echo.
-echo   [1] Jalankan Web App (Browser di http://localhost:8000) [Default]
-echo   [2] Jalankan Mode CLI di Terminal
+
+:: 1. Start Backend in dedicated window
+echo [1/2] Menjalankan Backend (FastAPI di http://localhost:8000)...
+start "NOVEL TL - [BE] Backend Server (Port 8000)" cmd /k "cd /d "%~dp0" && python server.py"
+
+:: 2. Start Frontend in dedicated window
+echo [2/2] Menjalankan Frontend (Angular di http://localhost:4200)...
+start "NOVEL TL - [FE] Frontend Angular (Port 4200)" cmd /k "cd /d "%~dp0web" && npm start"
+
+:: 3. Tunggu sebentar lalu buka browser
 echo.
-set /p choice="Pilih mode [1/2] (Tekan Enter = 1): "
+echo Menunggu inisialisasi... Membuka browser di http://localhost:4200
+timeout /t 4 >nul
+start http://localhost:4200
 
-if "%choice%"=="2" (
-    echo.
-    python novel_tl.py
-) else (
-    echo.
-    echo Menjalankan Web Server di http://localhost:8000 ...
-    start http://localhost:8000
-    python server.py
-)
+echo.
+echo ========================================================
+echo   Frontend & Backend sudah berjalan bersamaan:
+echo   - Web App UI : http://localhost:4200
+echo   - Backend API: http://localhost:8000
+echo.
+echo   Log server aktif di jendela CMD masing-masing.
+echo ========================================================
+echo.
 pause
-

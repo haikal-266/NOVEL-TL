@@ -1,0 +1,14 @@
+{
+  "name": "novel-tl",
+  "version": "1.0.0",
+  "description": "Novel TL - Local AI EPUB Generator (Kakuyomu to Clean EPUB)",
+  "scripts": {
+    "start": "start.bat",
+    "tl": "start.bat",
+    "dev": "start.bat",
+    "be": "python server.py",
+    "fe": "npm --prefix web start",
+    "build": "npm --prefix web run build"
+  }
+}
+
