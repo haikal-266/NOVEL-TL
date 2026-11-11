@@ -49,3 +49,4 @@ export interface JobState {
   error: string | null;
   cancelled?: boolean;
 }
+

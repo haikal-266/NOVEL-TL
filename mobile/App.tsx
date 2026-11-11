@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  RefreshControl,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { THEME } from './src/theme';
 import {
@@ -30,7 +32,9 @@ import { NovelInput } from './src/components/NovelInput';
 import { NovelPreview } from './src/components/NovelPreview';
 import { JobStatusCard } from './src/components/JobStatusCard';
 
-export default function App() {
+function MainScreen() {
+  const insets = useSafeAreaInsets();
+
   const [url, setUrl] = useState('');
   const [novel, setNovel] = useState<NovelInspectResponse | null>(null);
   const [job, setJob] = useState<JobState | null>(null);
@@ -40,15 +44,27 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [serverConnected, setServerConnected] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [showPreviewOnComplete, setShowPreviewOnComplete] = useState(false);
 
   const pollIntervalRef = useRef<any>(null);
 
-  // Check server connectivity on startup
+  // Check server connectivity
   const checkConnection = async () => {
-    const currentUrl = await getServerUrl();
-    const ok = await testServerConnection(currentUrl);
-    setServerConnected(ok);
+    try {
+      const currentUrl = await getServerUrl();
+      const ok = await testServerConnection(currentUrl);
+      setServerConnected(ok);
+    } catch {
+      setServerConnected(false);
+    }
+  };
+
+  const handlePullRefresh = async () => {
+    setRefreshing(true);
+    await checkConnection();
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -84,6 +100,8 @@ export default function App() {
     if (!url.trim() || isInspecting) return;
     setErrorMessage(null);
     setIsInspecting(true);
+    setJob(null);
+    setShowPreviewOnComplete(false);
 
     try {
       const data = await inspectNovel(url.trim());
@@ -101,6 +119,7 @@ export default function App() {
     if (isGenerating) return;
     setErrorMessage(null);
     setIsGenerating(true);
+    setShowPreviewOnComplete(false);
 
     try {
       const initialJob = await generateNovel(req);
@@ -130,17 +149,41 @@ export default function App() {
     setJob(null);
     setNovel(null);
     setIsGenerating(false);
+    setShowPreviewOnComplete(false);
     setErrorMessage(null);
   };
 
+  // Safe area insets with comfortable buffers
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 16) + 10;
+  const bottomPadding = Math.max(insets.bottom, 16) + 24;
+  const horizontalPadding = Math.max(insets.left, insets.right, 16);
+
+  const isJobRunning = job && (job.status === 'running' || job.status === 'pending');
+  const isJobCompleted = job && job.status === 'completed';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.screenWrapper}>
       <StatusBar style="dark" />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topPadding,
+            paddingBottom: bottomPadding,
+            paddingHorizontal: horizontalPadding,
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullRefresh}
+            colors={[THEME.colors.espresso]}
+            tintColor={THEME.colors.espresso}
+          />
+        }
       >
         <View style={styles.container}>
           {/* Header */}
@@ -156,7 +199,11 @@ export default function App() {
                 <Feather name="alert-triangle" size={14} color="#000" />
                 <Text style={styles.errorCardText}>{errorMessage}</Text>
               </View>
-              <TouchableOpacity onPress={() => setErrorMessage(null)} style={styles.errorDismiss}>
+              <TouchableOpacity
+                onPress={() => setErrorMessage(null)}
+                style={styles.errorDismiss}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Feather name="x" size={14} color="#000" />
               </TouchableOpacity>
             </View>
@@ -170,17 +217,20 @@ export default function App() {
             isLoading={isInspecting}
           />
 
-          {/* Active Job Progress */}
+          {/* Active / Completed Job Card */}
           {job ? (
             <JobStatusCard
               job={job}
               onCancel={handleCancelJob}
               onReset={handleReset}
+              onEditOptions={
+                isJobCompleted ? () => setShowPreviewOnComplete((prev) => !prev) : undefined
+              }
             />
           ) : null}
 
           {/* Step 2: Novel Preview & Chapter Selection */}
-          {novel && (!job || job.status === 'completed') ? (
+          {novel && (!isJobRunning && (!isJobCompleted || showPreviewOnComplete)) ? (
             <NovelPreview
               novel={novel}
               isGenerating={isGenerating}
@@ -196,7 +246,7 @@ export default function App() {
               <View style={[styles.colorSlice, { backgroundColor: THEME.colors.pink }]} />
               <View style={[styles.colorSlice, { backgroundColor: THEME.colors.lime }]} />
             </View>
-            <Text style={styles.footerText}>Everyone Should Start Reading</Text>
+            <Text style={styles.footerText}>Kakuyomu Light Novel Translator</Text>
           </View>
         </View>
       </ScrollView>
@@ -207,23 +257,29 @@ export default function App() {
         onClose={() => setSettingsModalVisible(false)}
         onSaved={checkConnection}
       />
-    </SafeAreaView>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <MainScreen />
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenWrapper: {
     flex: 1,
     backgroundColor: THEME.colors.canvas,
   },
   scrollContent: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     alignItems: 'center',
   },
   container: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 440,
   },
   errorCard: {
     flexDirection: 'row',
@@ -231,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: THEME.colors.pink,
     borderWidth: THEME.border.width,
-    borderColor: '#000',
+    borderColor: THEME.border.color,
     borderRadius: THEME.border.radiusSm,
     padding: 10,
     marginBottom: 12,
@@ -255,24 +311,24 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   colorPill: {
     flexDirection: 'row',
-    width: 90,
-    height: 18,
-    borderWidth: 2,
-    borderColor: '#000',
-    borderRadius: 9,
+    width: 80,
+    height: 14,
+    borderWidth: 1.5,
+    borderColor: '#121212',
+    borderRadius: 7,
     overflow: 'hidden',
     marginBottom: 8,
-    ...THEME.shadowSm,
   },
   colorSlice: {
     flex: 1,
   },
   footerText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: 'bold',
     color: THEME.colors.espresso,

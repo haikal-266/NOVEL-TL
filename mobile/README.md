@@ -27,3 +27,4 @@ Jika ingin menginstal sebagai file APK mandiri di HP tanpa Expo Go:
 cd mobile
 npx eas-cli build -p android --profile preview
 ```
+

@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { THEME } from '../theme';
-import { getServerUrl, setServerUrl, testServerConnection, DEFAULT_SERVER_URL } from '../services/api';
+import { getServerUrl, setServerUrl, testServerConnection } from '../services/api';
 
 interface ServerConfigModalProps {
   visible: boolean;
@@ -46,7 +48,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSave = async () => {
     if (url.trim()) {
-      await setServerUrl(url);
+      await setServerUrl(url.trim());
       onSaved();
       onClose();
     }
@@ -54,23 +56,26 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.overlay}
+      >
         <View style={styles.card}>
           {/* Header */}
           <View style={styles.headerRow}>
             <View style={styles.titleGroup}>
               <View style={styles.badgeLime}>
-                <Ionicons name="server" size={14} color="#000" />
+                <Ionicons name="server" size={14} color="#121212" />
               </View>
               <Text style={styles.title}>Koneksi Backend AI</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={18} color="#000" />
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x" size={18} color="#121212" />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.desc}>
-            Masukkan alamat IP laptop/PC kamu yang menjalankan FastAPI backend (port 8000) atau link Cloudflare Tunnel.
+            Masukkan alamat IP laptop/PC kamu yang menjalankan server.py (port 8000) atau link Cloudflare Tunnel.
           </Text>
 
           {/* Input Box */}
@@ -83,6 +88,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 setTestResult(null);
               }}
               placeholder="http://192.168.100.76:8000"
+              placeholderTextColor="#9CA3AF"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -93,18 +99,21 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             <TouchableOpacity
               style={styles.presetBtn}
               onPress={() => setUrl('http://192.168.100.76:8000')}
+              activeOpacity={0.8}
             >
-              <Text style={styles.presetText}>IP PC Lokal</Text>
+              <Text style={styles.presetText}>IP Wi-Fi Laptop</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.presetBtn}
               onPress={() => setUrl('http://10.0.2.2:8000')}
+              activeOpacity={0.8}
             >
               <Text style={styles.presetText}>Android Emu</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.presetBtn}
               onPress={() => setUrl('http://localhost:8000')}
+              activeOpacity={0.8}
             >
               <Text style={styles.presetText}>Localhost</Text>
             </TouchableOpacity>
@@ -113,14 +122,14 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           {/* Test Status Banner */}
           {testing && (
             <View style={styles.testStatusRow}>
-              <ActivityIndicator size="small" color="#000" />
+              <ActivityIndicator size="small" color="#121212" />
               <Text style={styles.testStatusText}>Menghubungi server...</Text>
             </View>
           )}
 
           {testResult === true && (
-            <View style={[styles.testStatusRow, { backgroundColor: '#D1FAE5' }]}>
-              <Feather name="check-circle" size={16} color="#065F46" />
+            <View style={[styles.testStatusRow, { backgroundColor: THEME.colors.successLight }]}>
+              <Feather name="check-circle" size={15} color="#065F46" />
               <Text style={[styles.testStatusText, { color: '#065F46' }]}>
                 Server Terhubung! (200 OK)
               </Text>
@@ -129,7 +138,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
           {testResult === false && (
             <View style={[styles.testStatusRow, { backgroundColor: THEME.colors.dangerLight }]}>
-              <Feather name="alert-circle" size={16} color={THEME.colors.danger} />
+              <Feather name="alert-circle" size={15} color={THEME.colors.danger} />
               <Text style={[styles.testStatusText, { color: THEME.colors.danger }]}>
                 Gagal terhubung. Pastikan PC & HP di Wi-Fi yang sama.
               </Text>
@@ -142,18 +151,23 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               style={styles.btnSecondary}
               onPress={handleTest}
               disabled={testing}
+              activeOpacity={0.8}
             >
-              <Feather name="activity" size={14} color="#000" />
-              <Text style={styles.btnSecondaryText}>Tes Koneksi</Text>
+              <Feather name="activity" size={14} color="#121212" />
+              <Text style={styles.btnSecondaryText}>Tes Ping</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
-              <Feather name="check" size={14} color="#000" />
-              <Text style={styles.btnPrimaryText}>Simpan & Terapkan</Text>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={handleSave}
+              activeOpacity={0.8}
+            >
+              <Feather name="check" size={14} color="#121212" />
+              <Text style={styles.btnPrimaryText}>Simpan</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -173,13 +187,13 @@ const styles = StyleSheet.create({
     borderColor: THEME.border.color,
     borderRadius: THEME.border.radius,
     padding: 16,
-    ...THEME.shadow,
+    ...THEME.shadowSm,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   titleGroup: {
     flexDirection: 'row',
@@ -188,8 +202,8 @@ const styles = StyleSheet.create({
   },
   badgeLime: {
     backgroundColor: THEME.colors.lime,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
+    borderWidth: 1.5,
+    borderColor: '#121212',
     padding: 4,
     borderRadius: 6,
   },
@@ -205,20 +219,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'monospace',
     color: THEME.colors.grayText,
-    marginBottom: 12,
-    lineHeight: 16,
+    marginBottom: 10,
+    lineHeight: 15,
   },
   inputBox: {
     backgroundColor: THEME.colors.canvas,
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    height: 44,
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   input: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: 'bold',
     color: THEME.colors.black,
@@ -230,16 +245,17 @@ const styles = StyleSheet.create({
   },
   presetBtn: {
     backgroundColor: THEME.colors.grayLight,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
+    borderWidth: 1,
+    borderColor: '#121212',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   presetText: {
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: 'bold',
+    color: '#121212',
   },
   testStatusRow: {
     flexDirection: 'row',
@@ -247,14 +263,15 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 8,
     borderRadius: 8,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
+    borderWidth: 1,
+    borderColor: '#121212',
     marginBottom: 12,
   },
   testStatusText: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: 'bold',
+    flex: 1,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -267,9 +284,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: THEME.colors.white,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#121212',
+    height: 44,
     borderRadius: 8,
   },
   btnSecondaryText: {
@@ -284,9 +301,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: THEME.colors.lime,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#121212',
+    height: 44,
     borderRadius: 8,
   },
   btnPrimaryText: {

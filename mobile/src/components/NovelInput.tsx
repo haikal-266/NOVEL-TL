@@ -32,14 +32,18 @@ export const NovelInput: React.FC<NovelInputProps> = ({
       <View style={styles.headerRow}>
         <View style={styles.badgeGroup}>
           <View style={styles.stepBadge}>
-            <Ionicons name="flash" size={10} color="#000" />
+            <Ionicons name="flash" size={10} color="#121212" />
             <Text style={styles.stepBadgeText}>LANGKAH 1</Text>
           </View>
           <Text style={styles.titleText}>LINK NOVEL KAKUYOMU</Text>
         </View>
 
         {url.length > 0 && (
-          <TouchableOpacity onPress={() => onChangeUrl('')} style={styles.clearBtn}>
+          <TouchableOpacity
+            onPress={() => onChangeUrl('')}
+            style={styles.clearBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Feather name="trash-2" size={12} color="#6B7280" />
             <Text style={styles.clearText}>Hapus</Text>
           </TouchableOpacity>
@@ -47,11 +51,12 @@ export const NovelInput: React.FC<NovelInputProps> = ({
       </View>
 
       <Text style={styles.subtitle}>
-        Tempel link halaman utama novel atau link salah satu episode dari Kakuyomu.
+        Tempel tautan halaman utama atau salah satu bab dari Kakuyomu.
       </Text>
 
       {/* Input Box */}
       <View style={styles.inputContainer}>
+        <Feather name="link-2" size={16} color="#6B7280" style={styles.inputIcon} />
         <TextInput
           style={styles.input}
           value={url}
@@ -69,10 +74,11 @@ export const NovelInput: React.FC<NovelInputProps> = ({
         style={styles.exampleBtn}
         onPress={() => onChangeUrl(DEFAULT_EXAMPLE_URL)}
         disabled={isLoading}
+        activeOpacity={0.8}
       >
         <View style={styles.exampleLeft}>
-          <Ionicons name="sparkles" size={12} color="#000" />
-          <Text style={styles.exampleText}>PAKAI CONTOH NOVEL ROMCOM</Text>
+          <Ionicons name="sparkles" size={12} color="#121212" />
+          <Text style={styles.exampleText}>PAKAI CONTOH ROMCOM</Text>
         </View>
         <Text style={styles.exampleDomain}>kakuyomu.jp</Text>
       </TouchableOpacity>
@@ -82,17 +88,17 @@ export const NovelInput: React.FC<NovelInputProps> = ({
         style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
         onPress={onSubmit}
         disabled={isLoading || !url.trim()}
-        activeOpacity={0.85}
+        activeOpacity={0.8}
       >
         {isLoading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color="#000" />
+            <ActivityIndicator size="small" color="#121212" />
             <Text style={styles.submitText}>MENGAMBIL DETAIL NOVEL...</Text>
           </View>
         ) : (
           <View style={styles.submitRow}>
             <Text style={styles.submitText}>AMBIL DETAIL NOVEL</Text>
-            <Feather name="arrow-right" size={16} color="#000" />
+            <Feather name="arrow-right" size={16} color="#121212" />
           </View>
         )}
       </TouchableOpacity>
@@ -107,8 +113,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.border.color,
     borderRadius: THEME.border.radius,
     padding: 14,
-    marginBottom: 16,
-    ...THEME.shadow,
+    marginBottom: 14,
+    ...THEME.shadowSm,
   },
   headerRow: {
     flexDirection: 'row',
@@ -126,8 +132,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: THEME.colors.lime,
-    borderWidth: THEME.border.thin,
-    borderColor: '#000',
+    borderWidth: 1.5,
+    borderColor: '#121212',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -136,7 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '900',
-    color: '#000',
+    color: '#121212',
   },
   titleText: {
     fontSize: 12,
@@ -148,6 +154,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
   clearText: {
     fontSize: 10,
@@ -163,19 +171,26 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: THEME.colors.canvas,
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    height: 44,
+    marginBottom: 8,
+  },
+  inputIcon: {
+    marginRight: 8,
   },
   input: {
+    flex: 1,
     fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: 'bold',
     color: THEME.colors.black,
+    paddingVertical: 0,
   },
   exampleBtn: {
     flexDirection: 'row',
@@ -183,9 +198,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: THEME.colors.peach,
     borderWidth: THEME.border.thin,
-    borderColor: '#000',
+    borderColor: '#121212',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -198,7 +213,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '900',
-    color: '#000',
+    color: '#121212',
   },
   exampleDomain: {
     fontSize: 9,
@@ -211,7 +226,7 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
     borderRadius: 10,
-    paddingVertical: 12,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     ...THEME.shadowSm,
@@ -232,7 +247,7 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#000',
-    letterSpacing: 0.5,
+    color: '#121212',
+    letterSpacing: 0.4,
   },
 });

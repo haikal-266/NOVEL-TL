@@ -53,7 +53,9 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           <View style={styles.badgeLime}>
             <Text style={styles.badgeLimeText}>NOVEL TERPILIH</Text>
           </View>
-          <Text style={styles.totalEpisodesText}>{novel.totalEpisodes} Bab</Text>
+          <View style={styles.badgeWhite}>
+            <Text style={styles.totalEpisodesText}>{novel.totalEpisodes} Bab</Text>
+          </View>
         </View>
 
         {/* Full Title */}
@@ -62,7 +64,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         </Text>
 
         {/* Author & ID */}
-        <Text style={styles.novelSub}>
+        <Text style={styles.novelSub} numberOfLines={1}>
           {novel.authorEn || novel.authorJa} • ID: {novel.workId}
         </Text>
       </View>
@@ -85,7 +87,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <View style={styles.optionLeft}>
-              <Feather name="bookmark" size={15} color="#000" />
+              <Feather name="bookmark" size={15} color="#121212" />
               <View>
                 <Text style={styles.optionTitle}>Hanya Bab Saat Ini</Text>
                 <Text style={styles.optionDesc}>
@@ -109,7 +111,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           activeOpacity={0.8}
         >
           <View style={styles.optionLeft}>
-            <Feather name="sliders" size={15} color="#000" />
+            <Feather name="sliders" size={15} color="#121212" />
             <View>
               <Text style={styles.optionTitle}>Rentang Bab (Custom)</Text>
               <Text style={styles.optionDesc}>Misal: 1-5 atau 1,2,3</Text>
@@ -123,13 +125,14 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         {/* Custom Range Input Field */}
         {rangeType === 'range' && (
           <View style={styles.customInputBox}>
-            <Text style={styles.customInputLabel}>Masukkan Nomor Bab:</Text>
+            <Text style={styles.customInputLabel}>Masukkan Nomor Bab (contoh: 1-5 atau 1,2,3):</Text>
             <TextInput
               style={styles.customInput}
               value={customRange}
               onChangeText={setCustomRange}
-              placeholder="1-5 atau 1,2,3"
+              placeholder="1-5"
               placeholderTextColor="#9CA3AF"
+              keyboardType="numbers-and-punctuation"
             />
           </View>
         )}
@@ -144,7 +147,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           activeOpacity={0.8}
         >
           <View style={styles.optionLeft}>
-            <Ionicons name="flame" size={16} color="#000" />
+            <Ionicons name="flame" size={16} color="#121212" />
             <View>
               <Text style={styles.optionTitle}>Mode Sampe Tamat</Text>
               <Text style={styles.optionDesc}>Kompilasi semua {novel.totalEpisodes} bab</Text>
@@ -183,7 +186,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
                 ]}
               />
             </View>
-            <Text style={styles.gridCardSub}>Sugoi V4 (Ultra Cepat)</Text>
+            <Text style={styles.gridCardSub}>Sugoi V4 (Cepat)</Text>
           </TouchableOpacity>
 
           {/* Indonesian Option */}
@@ -244,11 +247,11 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
         onPress={handleGenerate}
         disabled={isGenerating}
-        activeOpacity={0.85}
+        activeOpacity={0.8}
       >
-        <Feather name="download" size={18} color="#000" />
+        <Feather name="download" size={18} color="#121212" />
         <Text style={styles.generateBtnText}>GENERATE EPUB SEKARANG</Text>
-        <Feather name="arrow-right" size={16} color="#000" />
+        <Feather name="arrow-right" size={16} color="#121212" />
       </TouchableOpacity>
     </View>
   );
@@ -261,11 +264,11 @@ const styles = StyleSheet.create({
     borderColor: THEME.border.color,
     borderRadius: THEME.border.radius,
     padding: 14,
-    marginBottom: 16,
-    ...THEME.shadow,
+    marginBottom: 14,
+    ...THEME.shadowSm,
   },
   novelHeader: {
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1.5,
     borderBottomColor: '#E5E7EB',
     marginBottom: 12,
@@ -279,7 +282,7 @@ const styles = StyleSheet.create({
   badgeLime: {
     backgroundColor: THEME.colors.lime,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#121212',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -288,23 +291,31 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '900',
-    color: '#000',
+    color: '#121212',
+  },
+  badgeWhite: {
+    backgroundColor: THEME.colors.canvas,
+    borderWidth: 1,
+    borderColor: '#121212',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   totalEpisodesText: {
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: 'bold',
-    color: '#6B7280',
+    color: '#121212',
   },
   novelTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
     color: THEME.colors.black,
-    lineHeight: 19,
+    lineHeight: 18,
     marginBottom: 4,
   },
   novelSub: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: 'bold',
     color: '#4B5563',
@@ -316,10 +327,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     color: THEME.colors.espresso,
     letterSpacing: 0.4,
@@ -346,6 +357,7 @@ const styles = StyleSheet.create({
   optionCardActive: {
     backgroundColor: THEME.colors.lime,
     borderWidth: THEME.border.width,
+    borderColor: '#121212',
     ...THEME.shadowSm,
   },
   optionLeft: {
@@ -355,7 +367,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     color: THEME.colors.black,
   },
@@ -365,7 +377,7 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   pillBlack: {
-    backgroundColor: '#000',
+    backgroundColor: '#121212',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -382,13 +394,13 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#121212',
   },
   pillPinkText: {
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: '900',
-    color: '#000',
+    color: '#121212',
   },
   allPillRow: {
     flexDirection: 'row',
@@ -397,7 +409,7 @@ const styles = StyleSheet.create({
   customInputBox: {
     backgroundColor: THEME.colors.canvas,
     borderWidth: 1.5,
-    borderColor: '#000',
+    borderColor: '#121212',
     borderRadius: 8,
     padding: 8,
     marginBottom: 6,
@@ -406,20 +418,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'monospace',
     fontWeight: 'bold',
-    color: '#6B7280',
+    color: '#4B5563',
     marginBottom: 4,
   },
   customInput: {
     fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: 'bold',
-    color: '#000',
+    color: '#121212',
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#121212',
     borderRadius: 6,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
   },
   grid2: {
     flexDirection: 'row',
@@ -431,11 +443,12 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.thin,
     borderColor: THEME.border.color,
     borderRadius: 8,
-    padding: 10,
+    padding: 9,
   },
   gridCardActive: {
     backgroundColor: THEME.colors.lime,
     borderWidth: THEME.border.width,
+    borderColor: '#121212',
     ...THEME.shadowSm,
   },
   gridCardHeader: {
@@ -445,7 +458,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   gridCardTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     color: THEME.colors.black,
   },
@@ -460,11 +473,11 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#000',
+    borderColor: '#121212',
     backgroundColor: '#FFF',
   },
   radioDotActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#121212',
   },
   generateBtn: {
     flexDirection: 'row',
@@ -475,17 +488,17 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
     borderRadius: 10,
-    paddingVertical: 13,
-    marginTop: 4,
+    height: 48,
+    marginTop: 2,
     ...THEME.shadowSm,
   },
   generateBtnDisabled: {
     opacity: 0.6,
   },
   generateBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
-    color: '#000',
-    letterSpacing: 0.5,
+    color: '#121212',
+    letterSpacing: 0.4,
   },
 });

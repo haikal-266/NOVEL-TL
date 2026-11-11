@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
       <View style={styles.navBar}>
         <View style={styles.brandGroup}>
           <View style={styles.logoBox}>
-            <Feather name="book-open" size={18} color="#000000" />
+            <Feather name="book-open" size={18} color="#121212" />
           </View>
           <View>
             <Text style={styles.brandTitle}>NOVEL TL</Text>
@@ -23,11 +23,11 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
           </View>
         </View>
 
-        {/* Server & Settings CTA */}
+        {/* Server Status & Settings CTA */}
         <TouchableOpacity
           style={styles.settingsButton}
           onPress={onOpenSettings}
-          activeOpacity={0.8}
+          activeOpacity={0.75}
         >
           <View
             style={[
@@ -38,35 +38,26 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
           <Text style={styles.settingsText}>
             {serverConnected ? 'SERVER ON' : 'CONNECT'}
           </Text>
-          <Ionicons name="settings-outline" size={14} color="#000000" />
+          <Ionicons name="settings-sharp" size={13} color="#121212" />
         </TouchableOpacity>
       </View>
 
-      {/* Hero 3-Split Neo-Brutalist Card */}
-      <View style={styles.heroCard}>
-        {/* Left Dark Column */}
-        <View style={styles.heroColDark}>
-          <View style={styles.miniBadgeLime}>
-            <Ionicons name="flash" size={10} color="#000000" />
-            <Text style={styles.miniBadgeText}>AI LOCAL</Text>
+      {/* Sleek Feature Bar (Compact Neo-Brutalist Strip) */}
+      <View style={styles.featureStrip}>
+        <View style={styles.featureItemDark}>
+          <View style={styles.featureIconBadge}>
+            <Ionicons name="flash" size={10} color="#121212" />
           </View>
-          <Text style={styles.heroTextLime}>100% OFFLINE</Text>
-          <Text style={styles.heroSubText}>Sugoi V4 + Qwen 2.5</Text>
+          <View style={styles.featureCol}>
+            <Text style={styles.featureTitleLight}>100% OFFLINE AI</Text>
+            <Text style={styles.featureSubLight}>Sugoi V4 + Qwen 2.5</Text>
+          </View>
         </View>
 
-        {/* Right Split Column */}
-        <View style={styles.heroColRight}>
-          <View style={styles.heroRowTop}>
-            <Text style={styles.rowLabelText}>KAKUYOMU</Text>
-            <View style={styles.miniBadgeWhite}>
-              <Text style={styles.miniBadgeTextSm}>SOURCE</Text>
-            </View>
-          </View>
-          <View style={styles.heroRowBottom}>
-            <Text style={styles.rowLabelText}>EPUB 3 CLEAN</Text>
-            <View style={styles.miniBadgeLime}>
-              <Text style={styles.miniBadgeTextSm}>NO COVER</Text>
-            </View>
+        <View style={styles.featureItemPeach}>
+          <Text style={styles.featurePeachLabel}>EPUB 3</Text>
+          <View style={styles.cleanPill}>
+            <Text style={styles.cleanPillText}>0 WATERMARK</Text>
           </View>
         </View>
       </View>
@@ -76,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   navBar: {
     flexDirection: 'row',
@@ -86,9 +77,9 @@ const styles = StyleSheet.create({
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
     borderRadius: THEME.border.radius,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    marginBottom: 10,
+    marginBottom: 8,
     ...THEME.shadowSm,
   },
   brandGroup: {
@@ -97,8 +88,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoBox: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     backgroundColor: THEME.colors.lime,
     borderWidth: THEME.border.thin,
     borderColor: THEME.border.color,
@@ -107,7 +98,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: THEME.colors.black,
     letterSpacing: 0.5,
@@ -117,16 +108,17 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontWeight: 'bold',
     color: THEME.colors.grayText,
+    marginTop: 1,
   },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: THEME.colors.white,
+    backgroundColor: THEME.colors.canvas,
     borderWidth: THEME.border.thin,
     borderColor: THEME.border.color,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
   },
   statusDot: {
@@ -134,7 +126,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: '#121212',
   },
   settingsText: {
     fontSize: 10,
@@ -142,90 +134,77 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: THEME.colors.black,
   },
-  heroCard: {
+  featureStrip: {
     flexDirection: 'row',
     borderWidth: THEME.border.width,
     borderColor: THEME.border.color,
-    borderRadius: THEME.border.radius,
+    borderRadius: THEME.border.radiusSm,
     overflow: 'hidden',
     ...THEME.shadowSm,
   },
-  heroColDark: {
-    flex: 1.2,
+  featureItemDark: {
+    flex: 1.35,
     backgroundColor: THEME.colors.espresso,
-    padding: 12,
-    borderRightWidth: THEME.border.width,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRightWidth: THEME.border.thin,
     borderColor: THEME.border.color,
   },
-  heroColRight: {
-    flex: 1.3,
+  featureIconBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    backgroundColor: THEME.colors.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#121212',
   },
-  heroRowTop: {
+  featureCol: {
+    justifyContent: 'center',
+  },
+  featureTitleLight: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: THEME.colors.lime,
+    letterSpacing: 0.3,
+  },
+  featureSubLight: {
+    fontSize: 8,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+    color: '#D1D5DB',
+  },
+  featureItemPeach: {
+    flex: 1,
     backgroundColor: THEME.colors.peach,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
-    paddingVertical: 9,
-    borderBottomWidth: THEME.border.width,
-    borderColor: THEME.border.color,
+    paddingVertical: 7,
   },
-  heroRowBottom: {
-    backgroundColor: THEME.colors.pink,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-  },
-  rowLabelText: {
-    fontSize: 11,
+  featurePeachLabel: {
+    fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '900',
     color: THEME.colors.black,
   },
-  heroTextLime: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: THEME.colors.lime,
-    marginTop: 6,
-  },
-  heroSubText: {
-    fontSize: 9,
-    fontFamily: 'monospace',
-    fontWeight: 'bold',
-    color: '#D1D5DB',
-  },
-  miniBadgeLime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  cleanPill: {
     backgroundColor: THEME.colors.lime,
     borderWidth: 1,
-    borderColor: '#000000',
-    paddingHorizontal: 6,
+    borderColor: '#121212',
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
+    borderRadius: 4,
   },
-  miniBadgeWhite: {
-    backgroundColor: THEME.colors.white,
-    borderWidth: 1,
-    borderColor: '#000000',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  miniBadgeText: {
-    fontSize: 9,
-    fontFamily: 'monospace',
-    fontWeight: '900',
-    color: '#000000',
-  },
-  miniBadgeTextSm: {
+  cleanPillText: {
     fontSize: 8,
     fontFamily: 'monospace',
     fontWeight: '900',
-    color: '#000000',
+    color: '#121212',
   },
 });
