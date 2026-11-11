@@ -86,7 +86,7 @@ class JobState(BaseModel):
 # Global job store and singleton translators
 JOBS: Dict[str, JobState] = {}
 _sugoi_translator = None
-_qwen_translator = None
+_seallm_translator = None
 _translator_lock = threading.Lock()
 
 def get_sugoi_translator() -> SugoiTranslator:
@@ -97,13 +97,16 @@ def get_sugoi_translator() -> SugoiTranslator:
             _sugoi_translator = SugoiTranslator()
         return _sugoi_translator
 
-def get_qwen_translator():
-    global _qwen_translator
+def get_seallm_translator():
+    global _seallm_translator
     with _translator_lock:
-        if _qwen_translator is None:
-            from core.translators.qwen import QwenTranslator
-            _qwen_translator = QwenTranslator(n_threads=4, n_ctx=2048)
-        return _qwen_translator
+        if _seallm_translator is None:
+            from core.translators.seallm import SeaLLMTranslator
+            _seallm_translator = SeaLLMTranslator(n_threads=4, n_ctx=2048)
+        return _seallm_translator
+
+# Alias for backward compatibility
+get_qwen_translator = get_seallm_translator
 
 def get_translator() -> SugoiTranslator:
     return get_sugoi_translator()
@@ -223,7 +226,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         # Initialize translators
         sugoi = get_sugoi_translator()
-        qwen = get_qwen_translator() if target_lang == "id" else None
+        seallm = get_seallm_translator() if target_lang == "id" else None
 
         # Translate metadata if not present
         title_meta_key = f"title_{target_lang}"
@@ -243,16 +246,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 title_en = sugoi.translate_single(clean_t).replace("♪", "").strip()
 
             novel_info["title_en"] = title_en
-            if target_lang == "id" and qwen:
-                novel_info[title_meta_key] = qwen.translate_single_en_to_id(title_en)
+            if target_lang == "id" and seallm:
+                novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en)
             else:
                 novel_info[title_meta_key] = title_en
 
         if not novel_info.get(author_meta_key):
             author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
             novel_info["author_en"] = author_en
-            if target_lang == "id" and qwen:
-                novel_info[author_meta_key] = qwen.translate_single_en_to_id(author_en)
+            if target_lang == "id" and seallm:
+                novel_info[author_meta_key] = seallm.translate_single_en_to_id(author_en)
             else:
                 novel_info[author_meta_key] = author_en
 
@@ -298,7 +301,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             chap_weight = 1.0 / job.totalChapters
             chap_base = (chap_i - 1) / job.totalChapters
 
-            if target_lang == "id" and qwen:
+            if target_lang == "id" and seallm:
                 # ====== METODE JEMBATAN (BRIDGE: JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
                 job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
@@ -308,16 +311,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 if job.cancelled:
                     break
 
-                # Step 2: EN -> ID via Qwen 2.5 (Natural, fluent Indonesian)
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (Qwen)..."
-                title_tl = qwen.translate_single_en_to_id(en_title)
+                # Step 2: EN -> ID via SeaLLM 7B (Natural, literary Indonesian)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (SeaLLM 7B)..."
+                title_tl = seallm.translate_single_en_to_id(en_title)
 
                 def on_id_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
                     current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
                     job.progressPercent = min(90, int(current_pct))
 
-                id_texts = qwen.translate_en_to_id(
+                id_texts = seallm.translate_en_to_id(
                     en_texts,
                     batch_size=5,
                     progress_cb=on_id_progress

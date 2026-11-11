@@ -207,7 +207,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
                 ]}
               />
             </View>
-            <Text style={styles.gridCardSub}>Bridge Sugoi + Qwen</Text>
+            <Text style={styles.gridCardSub}>Bridge Sugoi + SeaLLM</Text>
           </TouchableOpacity>
         </View>
       </View>

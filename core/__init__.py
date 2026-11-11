@@ -4,9 +4,12 @@ from .epub_builder import EPUBBuilder, clean_english_text
 from .translators.sugoi import SugoiTranslator
 
 def __getattr__(name: str):
+    if name == "SeaLLMTranslator":
+        from .translators.seallm import SeaLLMTranslator
+        return SeaLLMTranslator
     if name == "QwenTranslator":
-        from .translators.qwen import QwenTranslator
-        return QwenTranslator
+        from .translators.seallm import SeaLLMTranslator
+        return SeaLLMTranslator
     if name == "LLMTranslator":
         from .translators.llm import LLMTranslator
         return LLMTranslator
@@ -19,6 +22,7 @@ __all__ = [
     "EPUBBuilder",
     "clean_english_text",
     "SugoiTranslator",
+    "SeaLLMTranslator",
     "LLMTranslator",
     "QwenTranslator"
 ]
