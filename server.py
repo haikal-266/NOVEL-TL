@@ -97,12 +97,41 @@ def get_sugoi_translator() -> SugoiTranslator:
             _sugoi_translator = SugoiTranslator()
         return _sugoi_translator
 
-def get_seallm_translator():
+def get_seallm_translator(job: Optional[JobState] = None):
     global _seallm_translator
     with _translator_lock:
         if _seallm_translator is None:
-            from core.translators.seallm import SeaLLMTranslator
-            _seallm_translator = SeaLLMTranslator(n_threads=4, n_ctx=2048)
+            from core.translators.seallm import (
+                is_seallm_installed,
+                get_seallm_model_path,
+                download_seallm_with_progress,
+                SeaLLMTranslator
+            )
+
+            model_path = get_seallm_model_path()
+            if not is_seallm_installed():
+                if job:
+                    job.message = "Mengunduh model SeaLLM-v3-7B (4.4 GB) pertama kali dari Hugging Face..."
+                    job.progressPercent = 1
+
+                def on_download_progress(done_bytes: int, total_bytes: int, speed: float) -> bool:
+                    if job:
+                        if job.cancelled:
+                            return False  # Abort download immediately
+                        pct = int((done_bytes / total_bytes) * 100) if total_bytes else 1
+                        done_mb = done_bytes / (1024 * 1024)
+                        total_mb = total_bytes / (1024 * 1024)
+                        job.message = f"Mengunduh AI SeaLLM 7B: {done_mb:.1f}/{total_mb:.1f} MB ({pct}%) [{speed:.1f} MB/s]..."
+                        job.progressPercent = min(99, pct)
+                    return True
+
+                model_path = download_seallm_with_progress(progress_cb=on_download_progress)
+
+            if job:
+                job.message = "Memuat model AI SeaLLM 7B ke RAM/CPU..."
+                job.progressPercent = 1
+
+            _seallm_translator = SeaLLMTranslator(model_path=model_path, n_threads=4, n_ctx=2048)
         return _seallm_translator
 
 # Alias for backward compatibility
@@ -226,7 +255,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         # Initialize translators
         sugoi = get_sugoi_translator()
-        seallm = get_seallm_translator() if target_lang == "id" else None
+        seallm = get_seallm_translator(job=job) if target_lang == "id" else None
 
         # Translate metadata if not present
         title_meta_key = f"title_{target_lang}"
@@ -429,9 +458,15 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             job.message = f"Selesai! File EPUB berhasil dibuat."
 
     except Exception as e:
-        job.status = "error"
-        job.error = str(e)
-        job.message = f"Error: {str(e)}"
+        print(f"[Worker Error] Job {job_id}: {e}")
+        if job.cancelled:
+            job.status = "error"
+            job.error = "Dibatalkan oleh pengguna."
+            job.message = "Proses dibatalkan oleh pengguna."
+        else:
+            job.status = "error"
+            job.error = str(e)
+            job.message = f"Error: {str(e)}"
 
 
 @app.post("/api/novel/generate", response_model=JobState)

@@ -7,12 +7,16 @@ Tuned for natural, literary Southeast Asian / Indonesian phrasing.
 import os
 import re
 import gc
+import time
+import urllib.request
 from typing import List, Optional, Callable
-from huggingface_hub import hf_hub_download
 from llama_cpp import Llama
 
 DEFAULT_REPO = "QuantFactory/SeaLLMs-v3-7B-Chat-GGUF"
 DEFAULT_FILENAME = "SeaLLMs-v3-7B-Chat.Q4_K_M.gguf"
+DEFAULT_DOWNLOAD_URL = (
+    f"https://huggingface.co/{DEFAULT_REPO}/resolve/main/{DEFAULT_FILENAME}"
+)
 DEFAULT_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "models", "seallm")
 
 SYSTEM_PROMPT_EN_ID = (
@@ -34,25 +38,95 @@ SYSTEM_PROMPT_JP_ID = (
 )
 
 
+def get_seallm_model_path(
+    filename: str = DEFAULT_FILENAME,
+    model_dir: str = DEFAULT_MODEL_DIR
+) -> str:
+    """Return the absolute path where the SeaLLM GGUF model file should be located."""
+    return os.path.join(model_dir, filename)
+
+
+def is_seallm_installed(
+    filename: str = DEFAULT_FILENAME,
+    model_dir: str = DEFAULT_MODEL_DIR
+) -> bool:
+    """Check if the model file is already downloaded and valid (> 100 MB)."""
+    target_path = get_seallm_model_path(filename, model_dir)
+    return os.path.exists(target_path) and os.path.getsize(target_path) > 100 * 1024 * 1024
+
+
+def download_seallm_with_progress(
+    url: str = DEFAULT_DOWNLOAD_URL,
+    filename: str = DEFAULT_FILENAME,
+    model_dir: str = DEFAULT_MODEL_DIR,
+    progress_cb: Optional[Callable[[int, int, float], bool]] = None
+) -> str:
+    """
+    Download SeaLLM GGUF directly from Hugging Face with chunk streaming and cancel support.
+    progress_cb(downloaded_bytes, total_bytes, speed_mb_s) -> return False to cancel download.
+    """
+    os.makedirs(model_dir, exist_ok=True)
+    target_path = os.path.join(model_dir, filename)
+    part_path = target_path + ".part"
+
+    if is_seallm_installed(filename, model_dir):
+        return target_path
+
+    print(f"[SeaLLM 7B] Mengunduh model {filename} dari {url}...")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    req = urllib.request.Request(url, headers=headers)
+
+    with urllib.request.urlopen(req, timeout=30) as response:
+        total_size = int(response.headers.get("Content-Length", 0))
+        downloaded = 0
+        start_time = time.time()
+        last_speed_time = start_time
+        last_downloaded = 0
+        speed_mb_s = 0.0
+
+        with open(part_path, "wb") as f:
+            chunk_size = 1024 * 1024  # 1 MB chunk
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+
+                now = time.time()
+                time_diff = now - last_speed_time
+                if time_diff >= 0.8:
+                    speed_mb_s = ((downloaded - last_downloaded) / (1024 * 1024)) / time_diff
+                    last_speed_time = now
+                    last_downloaded = downloaded
+
+                if progress_cb:
+                    should_continue = progress_cb(downloaded, total_size, speed_mb_s)
+                    if not should_continue:
+                        print("[SeaLLM 7B] Unduhan dibatalkan.")
+                        f.close()
+                        if os.path.exists(part_path):
+                            try:
+                                os.remove(part_path)
+                            except Exception:
+                                pass
+                        raise RuntimeError("Unduhan SeaLLM dibatalkan oleh pengguna.")
+
+    if os.path.exists(target_path):
+        os.remove(target_path)
+    os.rename(part_path, target_path)
+    print(f"[SeaLLM 7B] Model berhasil diunduh ke {target_path}")
+    return target_path
+
+
 def ensure_seallm_downloaded(
-    repo_id: str = DEFAULT_REPO,
     filename: str = DEFAULT_FILENAME,
     model_dir: str = DEFAULT_MODEL_DIR
 ) -> str:
     """Ensure SeaLLM-v3-7B GGUF model is downloaded and return its file path."""
-    os.makedirs(model_dir, exist_ok=True)
-    target_path = os.path.join(model_dir, filename)
-
-    if os.path.exists(target_path) and os.path.getsize(target_path) > 100 * 1024 * 1024:
-        return target_path
-
-    print(f"[SeaLLM 7B] Mengunduh model {filename} dari Hugging Face ({repo_id})...")
-    downloaded_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=filename,
-        local_dir=model_dir
-    )
-    return downloaded_path
+    if is_seallm_installed(filename, model_dir):
+        return get_seallm_model_path(filename, model_dir)
+    return download_seallm_with_progress(filename=filename, model_dir=model_dir)
 
 
 class SeaLLMTranslator:
@@ -203,4 +277,3 @@ class SeaLLMTranslator:
             self.llm = None
             gc.collect()
             print("[SeaLLM 7B] Model di-unload dari RAM.")
-
