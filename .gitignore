@@ -1,0 +1,87 @@
+# ==========================================
+# Novel TL - Git Ignore
+# ==========================================
+
+# --- AI Models (Large Weight Files) ---
+models/
+*.bin
+*.spm
+*.model
+*.onnx
+*.pt
+*.safetensors
+*.pth
+
+# --- Generated EPUBs & Scraped/Translated Cache ---
+output/
+cache/
+*.epub
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# --- Web / Node / Angular ---
+node_modules/
+web/node_modules/
+web/dist/
+web/.angular/
+.angular/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.sass-cache/
+
+# --- IDEs & OS Files ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# --- Logs & Temp ---
+*.log
+*.tmp
+temp/
+tmp/
+.gemini/
+

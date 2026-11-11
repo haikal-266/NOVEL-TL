@@ -1,0 +1,111 @@
+<section class="neo-card bg-[#E78FB3] p-4 sm:p-5 mb-5 border-[2.5px] border-black">
+  <!-- Top Status Indicator -->
+  <div class="flex items-center justify-between mb-3.5">
+    <div class="flex items-center space-x-2 min-w-0">
+      @if (job.status === 'running' || job.status === 'pending') {
+        <span class="inline-block w-3.5 h-3.5 bg-[#D7FF28] border-2 border-black rounded-full animate-ping flex-shrink-0"></span>
+        <span class="font-black text-xs uppercase tracking-wide text-[#55423C] truncate">
+          MEMPROSES AI TRANSLASI...
+        </span>
+      } @else if (job.status === 'completed') {
+        <div class="w-5 h-5 bg-[#D7FF28] rounded-full border-2 border-black flex items-center justify-center flex-shrink-0">
+          <app-icon name="check" [size]="12" class="text-black" />
+        </div>
+        <span class="font-black text-xs uppercase tracking-wide text-black truncate">
+          EPUB BERHASIL DIBUAT!
+        </span>
+      } @else {
+        <div class="w-5 h-5 bg-red-500 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0">
+          <app-icon name="alert" [size]="12" class="text-white" />
+        </div>
+        <span class="font-black text-xs uppercase tracking-wide text-red-900 truncate">
+          TERJADI KESALAHAN
+        </span>
+      }
+    </div>
+    <span class="neo-badge bg-white text-black font-mono font-bold text-xs px-2.5 py-0.5 flex-shrink-0 ml-2">
+      {{ job.progressPercent }}%
+    </span>
+  </div>
+
+  <!-- Progress Bar Container -->
+  <div class="w-full bg-[#55423C] border-[2.5px] border-black rounded-xl h-6 p-0.5 mb-3.5 shadow-neo-sm overflow-hidden">
+    <div
+      class="bg-[#D7FF28] h-full rounded-lg transition-all duration-300 progress-stripes border border-black"
+      [style.width.%]="job.progressPercent"
+    ></div>
+  </div>
+
+  <!-- Status Info Box -->
+  <div class="neo-card-sm bg-white p-3.5 mb-4 text-xs font-mono border-2 border-black">
+    <p class="font-bold text-[#1A1A1A] mb-1 leading-snug">
+      {{ job.message }}
+    </p>
+
+    @if (job.chapterTitle) {
+      <div class="flex items-center justify-between text-[11px] text-gray-600 pt-2.5 mt-2 border-t border-gray-200 gap-2">
+        <span class="font-bold text-black truncate flex-1 min-w-0">
+          Bab {{ job.currentChapter }}/{{ job.totalChapters }}: {{ job.chapterTitle }}
+        </span>
+        @if (job.paragraphsTotal > 0) {
+          <span class="bg-[#FBFAF6] px-2 py-0.5 rounded border border-black text-black font-bold flex-shrink-0">
+            {{ job.paragraphsDone }}/{{ job.paragraphsTotal }} par.
+          </span>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Completed State with Download CTA -->
+  @if (job.status === 'completed' && downloadFullUrl) {
+    <div class="space-y-2.5 pt-1">
+      <a
+        [href]="downloadFullUrl"
+        download
+        class="neo-btn w-full p-4 bg-[#D7FF28] text-black font-black text-center text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 border-[2.5px] border-black hover:bg-[#cbf71e]"
+      >
+        <app-icon name="download" [size]="20" />
+        <span>DOWNLOAD FILE EPUB</span>
+        <app-icon name="arrow-right" [size]="18" />
+      </a>
+
+      @if (job.filename) {
+        <div class="neo-card-sm bg-white p-2.5 text-center flex items-center justify-center gap-2 border-2 border-black">
+          <app-icon name="file" [size]="14" class="text-gray-600" />
+          <p class="text-[11px] font-mono text-gray-800 font-bold truncate max-w-full">
+            {{ job.filename }}
+          </p>
+        </div>
+      }
+
+      <button
+        type="button"
+        (click)="onReset()"
+        class="neo-btn w-full p-2.5 bg-white text-xs font-bold text-[#55423C] hover:bg-gray-100 flex items-center justify-center gap-1.5 border-2 border-black"
+      >
+        <app-icon name="refresh" [size]="14" />
+        <span>Buat EPUB untuk Novel Lainnya</span>
+      </button>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (job.status === 'error') {
+    <div class="space-y-2.5">
+      <div class="neo-card-sm bg-red-100 border-2 border-red-800 p-3 text-xs text-red-900 font-bold flex items-start gap-2">
+        <app-icon name="alert" [size]="16" class="text-red-700 mt-0.5" />
+        <span class="flex-1">
+          {{ job.error || 'Gagal memproses novel. Pastikan koneksi atau format URL sesuai.' }}
+        </span>
+      </div>
+      <button
+        type="button"
+        (click)="onReset()"
+        class="neo-btn w-full p-2.5 bg-white text-xs font-bold text-black border-2 border-black flex items-center justify-center gap-1.5"
+      >
+        <app-icon name="refresh" [size]="14" />
+        <span>Coba Lagi</span>
+      </button>
+    </div>
+  }
+</section>

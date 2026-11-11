@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --neo-dark: #55423C;
+  --neo-peach: #FFC0AD;
+  --neo-peach-light: #FFD7CB;
+  --neo-pink: #E78FB3;
+  --neo-lime: #D7FF28;
+  --neo-canvas: #FBFAF6;
+}
+
+body {
+  background-color: #FBFAF6;
+  background-image: 
+    linear-gradient(to right, rgba(85, 66, 60, 0.08) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, rgba(85, 66, 60, 0.08) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  color: #1A1A1A;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+@layer components {
+  /* Neo-Brutalist Classes with Rounded Corners matching the uploaded reference */
+  .neo-card {
+    border: 2.5px solid #000000;
+    border-radius: 1rem; /* rounded-2xl */
+    box-shadow: 4px 4px 0px #000000;
+    background-color: #ffffff;
+  }
+
+  .neo-card-sm {
+    border: 2px solid #000000;
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 3px 3px 0px #000000;
+    background-color: #ffffff;
+  }
+
+  .neo-card-sm[role="button"] {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .neo-card-sm[role="button"]:hover:not(.neo-card-active) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #000000;
+  }
+
+  .neo-card-sm[role="button"]:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #000000;
+  }
+
+  /* Active/Selected Card State with Bold Outline & Hard Shadow */
+  .neo-card-active {
+    background-color: #D7FF28 !important;
+    border-color: #000000 !important;
+    outline: 3px solid #000000 !important;
+    outline-offset: 3px !important;
+    box-shadow: 5px 5px 0px #000000 !important;
+    transform: translate(-1px, -1px);
+  }
+}
+
+.neo-btn {
+  border: 2.5px solid #000000;
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 4px 4px 0px #000000;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neo-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #000000;
+}
+
+.neo-btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0px #000000;
+}
+
+.neo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.neo-input {
+  border: 2.5px solid #000000;
+  border-radius: 0.75rem;
+  box-shadow: 3px 3px 0px #000000;
+  outline: none;
+  background-color: #ffffff;
+  transition: all 0.12s ease;
+}
+
+.neo-input:focus {
+  border-color: #000000;
+  box-shadow: 4px 4px 0px #D7FF28;
+}
+
+.neo-badge {
+  border: 1.5px solid #000000;
+  border-radius: 9999px;
+  box-shadow: 2px 2px 0px #000000;
+  font-family: "Space Mono", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Custom animated progress stripes */
+.progress-stripes {
+  background-image: linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.12) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.12) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 1.5rem 1.5rem;
+  animation: progress-move 1.5s linear infinite;
+}
+
+@keyframes progress-move {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1.5rem 0;
+  }
+}

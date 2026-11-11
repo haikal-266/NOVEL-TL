@@ -1,0 +1,63 @@
+<header class="mb-4">
+  <!-- Brand Bar -->
+  <div class="neo-card bg-white p-3.5 sm:p-4 flex items-center justify-between mb-3 border-[2.5px] border-black">
+    <div class="flex items-center space-x-3">
+      <!-- Icon Box: Lime with black stroke icon -->
+      <div class="w-10 h-10 bg-[#D7FF28] rounded-xl border-2 border-black flex items-center justify-center flex-shrink-0 shadow-[2px_2px_0px_#000]">
+        <app-icon name="book" [size]="20" class="text-black" />
+      </div>
+      <div>
+        <!-- Title: HIGH CONTRAST DARK (Never light/washed out) -->
+        <h1 class="text-xl sm:text-2xl font-black tracking-tight text-[#1A1A1A] leading-none">
+          NOVEL TL
+        </h1>
+        <p class="text-[11px] font-mono font-bold text-[#55423C] tracking-wider mt-1 flex items-center gap-1">
+          <span>KAKUYOMU</span>
+          <app-icon name="arrow-right" [size]="12" class="text-black" />
+          <span>EPUB</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-end gap-1">
+      <span class="neo-badge bg-[#D7FF28] text-black text-[10px] px-2.5 py-1 flex items-center gap-1">
+        <app-icon name="sparkle" [size]="12" />
+        <span>SUGOI V4</span>
+      </span>
+      <span class="text-[9px] font-mono text-gray-500 font-bold uppercase">Local Model</span>
+    </div>
+  </div>
+
+  <!-- Palette Card: 3-Split Hero directly inspired by user reference image -->
+  <div class="neo-card overflow-hidden bg-white border-[2.5px] border-black">
+    <div class="grid grid-cols-2 min-h-[96px]">
+      <!-- Left Box: Dark Espresso with Lime Accent -->
+      <div class="bg-[#55423C] p-3 sm:p-3.5 flex flex-col justify-between border-r-[2.5px] border-black">
+        <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 w-fit flex items-center gap-1">
+          <app-icon name="zap" [size]="10" />
+          <span>AI LOCAL</span>
+        </span>
+        <div>
+          <p class="text-sm sm:text-base font-black text-[#D7FF28] leading-tight">100% OFFLINE</p>
+          <p class="text-[10px] font-mono text-[#FFC0AD] font-bold mt-0.5">CTranslate2 Engine</p>
+        </div>
+      </div>
+
+      <!-- Right Box Split Vertically: Top Peach, Bottom Pink -->
+      <div class="grid grid-rows-2">
+        <div class="bg-[#FFC0AD] p-2.5 flex items-center justify-between border-b-[2.5px] border-black">
+          <span class="text-xs font-black text-[#55423C] tracking-wide">KAKUYOMU</span>
+          <span class="text-[10px] font-mono font-bold bg-white border-2 border-black px-1.5 py-0.5 rounded-md shadow-[1px_1px_0px_#000]">
+            SOURCE
+          </span>
+        </div>
+        <div class="bg-[#E78FB3] p-2.5 flex items-center justify-between">
+          <span class="text-xs font-black text-black tracking-wide">FULL ENGLISH</span>
+          <span class="text-[10px] font-mono font-bold bg-[#D7FF28] text-black border-2 border-black px-1.5 py-0.5 rounded-md shadow-[1px_1px_0px_#000]">
+            EPUB 3
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

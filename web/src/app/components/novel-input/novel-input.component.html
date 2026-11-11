@@ -1,0 +1,66 @@
+<section class="neo-card p-3.5 sm:p-4 mb-3.5 bg-white border-[2px] border-black shadow-[3px_3px_0px_#000]">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-2.5">
+    <div class="flex items-center space-x-2">
+      <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 font-mono flex items-center gap-1 border border-black">
+        <app-icon name="zap" [size]="10" />
+        <span>INPUT</span>
+      </span>
+      <h2 class="font-black text-xs uppercase tracking-wide text-[#1A1A1A]">
+        Link Novel Kakuyomu
+      </h2>
+    </div>
+
+    @if (url) {
+      <button
+        type="button"
+        (click)="url = ''"
+        class="text-[10px] font-bold text-gray-400 hover:text-black font-mono inline-flex items-center gap-1"
+      >
+        <app-icon name="trash" [size]="11" />
+        <span>Hapus</span>
+      </button>
+    }
+  </div>
+
+  <!-- Input Field & Submit -->
+  <div class="space-y-2.5">
+    <input
+      id="novelUrl"
+      type="url"
+      [(ngModel)]="url"
+      placeholder="https://kakuyomu.jp/works/..."
+      class="neo-input w-full p-2.5 sm:p-3 text-xs font-mono placeholder:text-gray-400 focus:bg-white"
+      (keyup.enter)="onSubmit()"
+      [disabled]="isLoading"
+    />
+
+    <div class="flex items-center justify-between">
+      <button
+        type="button"
+        (click)="setExample()"
+        class="neo-badge bg-[#FFC0AD] hover:bg-[#ffd7cb] text-[#55423C] text-[9px] px-2 py-0.5 transition-all inline-flex items-center gap-1 border border-black active:scale-95"
+      >
+        <app-icon name="sparkle" [size]="10" class="text-black" />
+        <span>Pakai Contoh Romcom</span>
+      </button>
+      <span class="text-[9px] font-mono text-gray-400 font-bold">kakuyomu.jp</span>
+    </div>
+
+    <!-- Submit CTA -->
+    <button
+      type="button"
+      (click)="onSubmit()"
+      [disabled]="!url.trim() || isLoading"
+      class="neo-btn w-full p-3 bg-[#D7FF28] text-black font-black text-xs uppercase tracking-wider hover:bg-[#cbf71e] flex items-center justify-center gap-2 border-[2px] border-black"
+    >
+      @if (isLoading) {
+        <span class="inline-block w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+        <span>MEMERIKSA KAKUYOMU...</span>
+      } @else {
+        <span>AMBIL DETAIL NOVEL</span>
+        <app-icon name="arrow-right" [size]="14" />
+      }
+    </button>
+  </div>
+</section>

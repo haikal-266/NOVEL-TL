@@ -1,0 +1,62 @@
+<main class="min-h-screen py-4 px-3 sm:px-4 flex flex-col items-center justify-start">
+  <!-- Mobile Container (Max width 420px for ideal mobile proportion) -->
+  <div class="w-full max-w-sm sm:max-w-md space-y-3">
+    <!-- Header -->
+    <app-header />
+
+    <!-- Error Banner -->
+    @if (errorMessage()) {
+      <div
+        class="neo-card bg-[#E78FB3] border-[2px] border-black p-3 text-xs font-bold text-black flex items-center justify-between shadow-[2px_2px_0px_#000]">
+        <div class="flex items-center space-x-2">
+          <app-icon name="alert" [size]="16" class="text-black" />
+          <span>{{ errorMessage() }}</span>
+        </div>
+        <button
+          type="button"
+          (click)="clearError()"
+          class="font-black text-sm px-2 py-0.5 hover:bg-black hover:text-white border-2 border-black rounded-lg ml-2 transition-colors">
+          &times;
+        </button>
+      </div>
+    }
+
+    <!-- Novel URL Input Form (Step 1) -->
+    <app-novel-input
+      [isLoading]="isInspecting()"
+      (inspect)="onInspect($event)"
+    />
+
+    <!-- Active Job / Live Progress -->
+    @if (job(); as currentJob) {
+      <app-job-status
+        [job]="currentJob"
+        (reset)="onReset()"
+      />
+    }
+
+    <!-- Novel Preview & Chapter Selection (Step 2) -->
+    @if (novel(); as currentNovel) {
+      @if (!job() || job()?.status === 'completed') {
+        <app-novel-preview
+          [novel]="currentNovel"
+          [isGenerating]="isGenerating()"
+          (startGenerate)="onStartGenerate($event)"
+        />
+      }
+    }
+
+    <!-- Footer -->
+    <footer class="pt-4 pb-6 text-center">
+      <div class="inline-flex rounded-xl overflow-hidden border-2 border-black shadow-[2px_2px_0px_#000] mb-2">
+        <span class="w-6 h-5 bg-[#55423C]" title="#55423C"></span>
+        <span class="w-6 h-5 bg-[#FFC0AD]" title="#FFC0AD"></span>
+        <span class="w-6 h-5 bg-[#E78FB3]" title="#E78FB3"></span>
+        <span class="w-6 h-5 bg-[#D7FF28]" title="#D7FF28"></span>
+      </div>
+      <p class="text-xs font-mono font-bold text-[#55423C]">
+        Everyone Should Start Reading
+      </p>
+    </footer>
+  </div>
+</main>
