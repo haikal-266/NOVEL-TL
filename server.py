@@ -256,15 +256,6 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             else:
                 novel_info[author_meta_key] = author_en
 
-        if not novel_info.get(synopsis_meta_key) and novel_info.get("synopsis"):
-            short_syn = novel_info["synopsis"][:250].strip()
-            syn_en = sugoi.translate_single(short_syn).replace("♪", "").strip()
-            novel_info["synopsis_en"] = syn_en
-            if target_lang == "id" and qwen:
-                novel_info[synopsis_meta_key] = qwen.translate_single_en_to_id(syn_en)
-            else:
-                novel_info[synopsis_meta_key] = syn_en
-
         cache.save_novel_info(novel_info)
 
         # Process chapters sequentially (one chapter completely finished before the next)

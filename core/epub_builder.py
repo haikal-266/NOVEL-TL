@@ -215,12 +215,8 @@ class EPUBBuilder:
         )
         self.book.add_item(self.nav_css)
 
-        # Title Page
+        # Title Page (Book details only)
         self._create_title_page()
-
-        # Synopsis Page (if available)
-        if synopsis.strip():
-            self._create_synopsis_page(synopsis)
 
     def _create_title_page(self) -> None:
         title = self.display_title
@@ -242,48 +238,18 @@ class EPUBBuilder:
     <div style="text-align: center; margin-top: 3em;">
         <h1 class="title-heading">{html.escape(title)}</h1>
         <div class="novel-meta">
-            <p><strong>Author:</strong> {html.escape(author)}</p>
-            <p><strong>Edition:</strong> {mode_desc}</p>
-            <p><strong>Source:</strong> <a href="{html.escape(url)}">Kakuyomu Original</a></p>
-            <p style="margin-top: 1.5em; font-size: 0.85em; color: #94a3b8;">
-                Generated with Sugoi AI Novel Generator
-            </p>
+            <p><strong>Penulis / Author:</strong> {html.escape(author)}</p>
+            <p><strong>Edisi:</strong> {mode_desc}</p>
+            <p><strong>Sumber:</strong> <a href="{html.escape(url)}">Kakuyomu Original</a></p>
         </div>
     </div>
 </body>
 </html>"""
-        tp = epub.EpubHtml(title="Title Page", file_name="titlepage.xhtml", lang=self.target_lang)
+        tp = epub.EpubHtml(title="Detail Buku", file_name="titlepage.xhtml", lang=self.target_lang)
         tp.content = html_content
         tp.add_item(self.nav_css)
         self.book.add_item(tp)
         self._chapters.append(tp)
-
-    def _create_synopsis_page(self, synopsis: str) -> None:
-        paragraphs_html = ""
-        for p in synopsis.split("\n\n"):
-            clean_p = p.strip()
-            if clean_p:
-                paragraphs_html += f"<p>{html.escape(clean_p)}</p>\n"
-
-        html_content = f"""<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
-<head>
-    <title>Synopsis</title>
-    <link rel="stylesheet" type="text/css" href="style/style.css" />
-</head>
-<body>
-    <h1 class="chapter-title">Synopsis</h1>
-    <div class="synopsis-box">
-        {paragraphs_html}
-    </div>
-</body>
-</html>"""
-        sp = epub.EpubHtml(title="Synopsis", file_name="synopsis.xhtml", lang=self.target_lang)
-        sp.content = html_content
-        sp.add_item(self.nav_css)
-        self.book.add_item(sp)
-        self._chapters.append(sp)
 
     def add_chapter(
         self,

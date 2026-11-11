@@ -79,15 +79,32 @@ class QwenTranslator:
         )
         print("[Qwen GGUF] Model siap digunakan!")
 
-    def _clean_output(self, raw: str) -> str:
-        """Strip conversational filler or accidental meta-comments."""
+    def _clean_output(self, raw: str, fallback_orig: str = "") -> str:
+        """Strip conversational filler, meta-comments, or accidental refusal notes."""
         text = raw.strip()
-        # Remove common assistant chat prefixes
-        text = re.sub(r"^(Terjemahan|Hasil terjemahan|Artinya)\s*:\s*", "", text, flags=re.IGNORECASE)
+
+        # Check for LLM meta-chatter / refusal hallucinations
+        meta_patterns = [
+            r"^(Teks ini|Teks di atas|Kalimat ini)\s+sudah\s+(dalam\s+)?bahasa\s+indonesia.*$",
+            r"^.*tidak\s+perlu\s+diterjemahkan.*$",
+            r"^.*tidak\s+perlu\s+terjemahan.*$",
+            r"^(Catatan|Note|Terjemahan|Hasil terjemahan|Artinya)\s*:\s*",
+            r"^Berikut\s+(adalah\s+)?hasil\s+terjemahan.*:\s*",
+            r"^Here\s+is\s+the\s+translation.*:\s*",
+        ]
+        for pat in meta_patterns:
+            if re.search(pat, text, flags=re.IGNORECASE):
+                cleaned = re.sub(pat, "", text, flags=re.IGNORECASE).strip()
+                if not cleaned:
+                    return fallback_orig.strip()
+                text = cleaned
+
         # Remove markdown quotes if wrapped
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1].strip()
         elif text.startswith('「') and text.endswith('」'):
+            text = text[1:-1].strip()
+        elif text.startswith('“') and text.endswith('”'):
             text = text[1:-1].strip()
         return text
 
@@ -199,7 +216,7 @@ class QwenTranslator:
             stop=["<|im_end|>", "<|endoftext|>"]
         )
 
-        return self._clean_output(output["choices"][0]["text"])
+        return self._clean_output(output["choices"][0]["text"], fallback_orig=text)
 
     def translate_en_to_id(
         self,
@@ -253,7 +270,7 @@ class QwenTranslator:
 
                     if len(parsed_dict) == len(batch_texts):
                         for i, idx in enumerate(batch_idxs):
-                            results[idx] = self._clean_output(parsed_dict.get(i + 1, ""))
+                            results[idx] = self._clean_output(parsed_dict.get(i + 1, ""), fallback_orig=batch_texts[i])
                     else:
                         for i, idx in enumerate(batch_idxs):
                             results[idx] = self.translate_single_en_to_id(batch_texts[i])
