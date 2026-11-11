@@ -276,7 +276,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             novel_info["title_en"] = title_en
             if target_lang == "id" and seallm:
-                novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en)
+                novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en, ja_context=novel_info["title"])
             else:
                 novel_info[title_meta_key] = title_en
 
@@ -284,7 +284,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
             novel_info["author_en"] = author_en
             if target_lang == "id" and seallm:
-                novel_info[author_meta_key] = seallm.translate_single_en_to_id(author_en)
+                novel_info[author_meta_key] = seallm.translate_single_en_to_id(author_en, ja_context=novel_info["author"])
             else:
                 novel_info[author_meta_key] = author_en
 
@@ -340,9 +340,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 if job.cancelled:
                     break
 
-                # Step 2: EN -> ID via SeaLLM 7B (Natural, literary Indonesian)
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (SeaLLM 7B)..."
-                title_tl = seallm.translate_single_en_to_id(en_title)
+                # Step 2: EN -> ID via SeaLLM 1.5B (Natural, literary Indonesian with speech markers)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (SeaLLM 1.5B)..."
+                title_tl = seallm.translate_single_en_to_id(en_title, ja_context=ep_title_ja)
 
                 def on_id_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
@@ -351,7 +351,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
                 id_texts = seallm.translate_en_to_id(
                     en_texts,
-                    batch_size=5,
+                    ja_texts=clean_texts,
+                    batch_size=4,
                     progress_cb=on_id_progress
                 )
                 final_translations = id_texts

@@ -1,7 +1,8 @@
 """
-SeaLLM-v3-7B GGUF Translator (EN -> ID / JP -> ID)
-Offline Indonesian novel translator powered by SeaLLMs-v3-7B via llama.cpp.
-Tuned for natural, literary Southeast Asian / Indonesian phrasing.
+SeaLLM-v3-1.5B GGUF Translator (EN -> ID / JP -> ID)
+Offline Indonesian novel translator powered by SeaLLMs-v3-1.5B via llama.cpp.
+Tuned for natural, literary Southeast Asian / Indonesian phrasing with
+Japanese speech marker & gender disambiguation.
 """
 
 import os
@@ -11,9 +12,10 @@ import time
 import urllib.request
 from typing import List, Optional, Callable
 from llama_cpp import Llama
+from core.speech_markers import detect_gender_cues, format_context_snippet
 
-DEFAULT_REPO = "QuantFactory/SeaLLMs-v3-7B-Chat-GGUF"
-DEFAULT_FILENAME = "SeaLLMs-v3-7B-Chat.Q4_K_M.gguf"
+DEFAULT_REPO = "mradermacher/SeaLLMs-v3-1.5B-Chat-GGUF"
+DEFAULT_FILENAME = "SeaLLMs-v3-1.5B-Chat.Q4_K_M.gguf"
 DEFAULT_DOWNLOAD_URL = (
     f"https://huggingface.co/{DEFAULT_REPO}/resolve/main/{DEFAULT_FILENAME}"
 )
@@ -21,20 +23,18 @@ DEFAULT_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..
 
 SYSTEM_PROMPT_EN_ID = (
     "Kamu adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia. "
-    "Terjemahkan teks bahasa Inggris berikut ke bahasa Indonesia yang luwes, emosional, dan alami layaknya novel terbitan Gramedia. "
-    "Hindari terjemahan kaku kata per kata, ubah idiom bahasa Inggris menjadi padanan yang wajar di telinga pembaca Indonesia, "
-    "dan gunakan kata ganti 'aku-kamu' untuk dialog akrab. Pastikan ritme kalimat terasa hidup.\n"
-    "Aturan ketat:\n"
-    "1. HANYA berikan hasil terjemahan langsung tanpa teks pembuka, tanpa pengantar, dan tanpa catatan/penjelasan apapun.\n"
-    "2. Pertahankan keutuhan alur cerita dan emosi setiap adegan."
-)
-
-SYSTEM_PROMPT_JP_ID = (
-    "Anda adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia.\n"
-    "Tugas: Terjemahkan teks novel Jepang berikut ke dalam bahasa Indonesia novel yang alami, mengalir, dan mudah dipahami.\n"
-    "Aturan ketat:\n"
-    "1. Pertahankan konsistensi nama karakter dan dialog.\n"
-    "2. HANYA berikan teks hasil terjemahan langsung tanpa pembuka atau penjelasan."
+    "Terjemahkan paragraf novel berikut ke dalam bahasa Indonesia sastra yang mengalir, alami, emosional, dan hidup layaknya novel Gramedia.\n\n"
+    "PANDUAN PENTING GENDER DARI TEKS ASLI JEPANG:\n"
+    "1. Perhatikan tanda gender karakter dari teks asli:\n"
+    "   - Karakter Perempuan: tanda '少女/女の子/彼女/妹/姉/娘', kata ganti 'あたし/私', partikel dialog feminim '~わ/~かしら/~のよ/~わね'.\n"
+    "     Wajib gunakan kata ganti perempuan ('ia', 'dia perempuan', 'gadis itu', 'putri'), JANGAN tertukar menjadi laki-laki ('dia/pria')!\n"
+    "   - Karakter Laki-laki: tanda '少年/男/彼/兄/弟', kata ganti '俺/僕', partikel dialog maskulin '~ぜ/~ぞ/~だろ'.\n"
+    "     Gunakan kata ganti laki-laki ('ia', 'pemuda itu', 'pria itu').\n"
+    "2. Gunakan kata ganti dialog 'aku-kamu' yang akrab dan luwes. Hindari terjemahan kaku kata per kata.\n\n"
+    "Format output WAJIB bernomor sama:\n"
+    "[1] <hasil terjemahan Indonesia 1>\n"
+    "[2] <hasil terjemahan Indonesia 2>\n"
+    "DILARANG menulis komentar apapun selain nomor dan teks hasil terjemahan langsung."
 )
 
 
@@ -42,7 +42,7 @@ def get_seallm_model_path(
     filename: str = DEFAULT_FILENAME,
     model_dir: str = DEFAULT_MODEL_DIR
 ) -> str:
-    """Return the absolute path where the SeaLLM GGUF model file should be located."""
+    """Return the absolute path where the SeaLLM GGUF model file is located."""
     return os.path.join(model_dir, filename)
 
 
@@ -72,7 +72,7 @@ def download_seallm_with_progress(
     if is_seallm_installed(filename, model_dir):
         return target_path
 
-    print(f"[SeaLLM 7B] Mengunduh model {filename} dari {url}...")
+    print(f"[SeaLLM 1.5B] Mengunduh model {filename} dari {url}...")
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     req = urllib.request.Request(url, headers=headers)
 
@@ -103,7 +103,7 @@ def download_seallm_with_progress(
                 if progress_cb:
                     should_continue = progress_cb(downloaded, total_size, speed_mb_s)
                     if not should_continue:
-                        print("[SeaLLM 7B] Unduhan dibatalkan.")
+                        print("[SeaLLM 1.5B] Unduhan dibatalkan.")
                         f.close()
                         if os.path.exists(part_path):
                             try:
@@ -115,7 +115,7 @@ def download_seallm_with_progress(
     if os.path.exists(target_path):
         os.remove(target_path)
     os.rename(part_path, target_path)
-    print(f"[SeaLLM 7B] Model berhasil diunduh ke {target_path}")
+    print(f"[SeaLLM 1.5B] Model berhasil diunduh ke {target_path}")
     return target_path
 
 
@@ -123,7 +123,7 @@ def ensure_seallm_downloaded(
     filename: str = DEFAULT_FILENAME,
     model_dir: str = DEFAULT_MODEL_DIR
 ) -> str:
-    """Ensure SeaLLM-v3-7B GGUF model is downloaded and return its file path."""
+    """Ensure SeaLLM-v3-1.5B GGUF model is downloaded and return its file path."""
     if is_seallm_installed(filename, model_dir):
         return get_seallm_model_path(filename, model_dir)
     return download_seallm_with_progress(filename=filename, model_dir=model_dir)
@@ -131,8 +131,8 @@ def ensure_seallm_downloaded(
 
 class SeaLLMTranslator:
     """
-    Offline Southeast Asian / Indonesian translator powered by SeaLLMs-v3-7B GGUF.
-    Produces rich, flowing Indonesian prose for light novels.
+    Offline Southeast Asian / Indonesian translator powered by SeaLLMs-v3-1.5B GGUF.
+    Produces rich, flowing Indonesian prose for light novels with Japanese speech marker analysis.
     """
 
     def __init__(
@@ -144,9 +144,8 @@ class SeaLLMTranslator:
         if not model_path:
             model_path = ensure_seallm_downloaded()
 
-        # Reserve at least 1 core for OS / FastAPI server responsiveness
         cpu_threads = n_threads or min(4, max(1, (os.cpu_count() or 4) - 1))
-        print(f"[SeaLLM 7B] Memuat model {os.path.basename(model_path)} (threads={cpu_threads}, ctx={n_ctx})...")
+        print(f"[SeaLLM 1.5B] Memuat model {os.path.basename(model_path)} (threads={cpu_threads}, ctx={n_ctx})...")
         self.llm = Llama(
             model_path=model_path,
             n_threads=cpu_threads,
@@ -154,13 +153,12 @@ class SeaLLMTranslator:
             n_batch=512,
             verbose=False
         )
-        print("[SeaLLM 7B] Model siap digunakan!")
+        print("[SeaLLM 1.5B] Model siap digunakan!")
 
     def _clean_output(self, raw: str, fallback_orig: str = "") -> str:
         """Strip conversational filler, meta-comments, or accidental refusal notes."""
         text = raw.strip()
 
-        # Check for LLM meta-chatter / refusal hallucinations
         meta_patterns = [
             r"^(Teks ini|Teks di atas|Kalimat ini)\s+sudah\s+(dalam\s+)?bahasa\s+indonesia.*$",
             r"^.*tidak\s+perlu\s+diterjemahkan.*$",
@@ -185,21 +183,33 @@ class SeaLLMTranslator:
             text = text[1:-1].strip()
         return text
 
-    def translate_single_en_to_id(self, text: str) -> str:
+    def translate_single_en_to_id(self, text: str, ja_context: str = "") -> str:
         """Translate a single English sentence or title to Indonesian."""
         if not text or not text.strip():
             return ""
 
+        hint = ""
+        gender = detect_gender_cues(ja_context)
+        if gender == "FEMALE":
+            hint = " [Karakter: Perempuan]"
+        elif gender == "MALE":
+            hint = " [Karakter: Laki-laki]"
+
+        user_content = f"{text.strip()}{hint}"
+        if ja_context:
+            user_content += f" (Konteks asli: {format_context_snippet(ja_context)})"
+
         prompt = (
-            f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID}<|im_end|>\n"
-            f"<|im_start|>user\n{text.strip()}<|im_end|>\n"
+            f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID}\n"
+            "DILARANG menulis komentar apapun selain teks hasil terjemahan langsung.<|im_end|>\n"
+            f"<|im_start|>user\n{user_content}<|im_end|>\n"
             f"<|im_start|>assistant\n"
         )
 
         output = self.llm(
             prompt,
             max_tokens=512,
-            temperature=0.25,
+            temperature=0.2,
             top_p=0.9,
             stop=["<|im_end|>", "<|endoftext|>"]
         )
@@ -209,11 +219,12 @@ class SeaLLMTranslator:
     def translate_en_to_id(
         self,
         texts: List[str],
-        batch_size: int = 5,
+        ja_texts: Optional[List[str]] = None,
+        batch_size: int = 4,
         progress_cb: Optional[Callable[[int, int], None]] = None
     ) -> List[str]:
         """
-        Translate English texts to Indonesian using chunked batching.
+        Translate English texts to Indonesian using chunked batching with Japanese speech markers.
         Empty strings are returned as empty strings.
         """
         results = [""] * len(texts)
@@ -225,22 +236,33 @@ class SeaLLMTranslator:
         total = len(valid_indices)
         processed = 0
 
-        chunk_size = max(1, min(batch_size, 2))
+        chunk_size = max(1, min(batch_size, 4))
         for b_start in range(0, total, chunk_size):
-            time.sleep(0.03)  # Yield CPU to allow FastAPI event loop to handle polling
+            time.sleep(0.02)  # Yield CPU execution to keep FastAPI responsive
             batch_idxs = valid_indices[b_start : b_start + chunk_size]
             batch_texts = [texts[idx].strip() for idx in batch_idxs]
 
             if len(batch_texts) == 1:
-                results[batch_idxs[0]] = self.translate_single_en_to_id(batch_texts[0])
+                ja_c = ja_texts[batch_idxs[0]] if ja_texts and batch_idxs[0] < len(ja_texts) else ""
+                results[batch_idxs[0]] = self.translate_single_en_to_id(batch_texts[0], ja_context=ja_c)
             else:
-                numbered_input = "\n".join([f"[{i+1}] {t}" for i, t in enumerate(batch_texts)])
+                # Build context-rich batch input
+                lines = []
+                for i, idx in enumerate(batch_idxs):
+                    en_t = batch_texts[i]
+                    ja_t = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                    gender = detect_gender_cues(ja_t)
+                    gender_hint = " [Perempuan]" if gender == "FEMALE" else (" [Laki-laki]" if gender == "MALE" else "")
+
+                    if ja_t:
+                        snippet = format_context_snippet(ja_t)
+                        lines.append(f"[{i+1}] {en_t}{gender_hint} (Konteks asli: {snippet})")
+                    else:
+                        lines.append(f"[{i+1}] {en_t}{gender_hint}")
+
+                numbered_input = "\n".join(lines)
                 prompt = (
-                    f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID}\n"
-                    "Format output WAJIB bernomor sama:\n"
-                    "[1] <hasil terjemahan 1>\n"
-                    "[2] <hasil terjemahan 2>\n"
-                    "DILARANG menulis komentar apapun selain nomor dan teks terjemahan.<|im_end|>\n"
+                    f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID}<|im_end|>\n"
                     f"<|im_start|>user\n{numbered_input}<|im_end|>\n"
                     f"<|im_start|>assistant\n"
                 )
@@ -249,7 +271,7 @@ class SeaLLMTranslator:
                     output = self.llm(
                         prompt,
                         max_tokens=min(2048, 250 * len(batch_texts)),
-                        temperature=0.25,
+                        temperature=0.2,
                         top_p=0.9,
                         stop=["<|im_end|>", "<|endoftext|>"]
                     )
@@ -262,10 +284,12 @@ class SeaLLMTranslator:
                             results[idx] = self._clean_output(parsed_dict.get(i + 1, ""), fallback_orig=batch_texts[i])
                     else:
                         for i, idx in enumerate(batch_idxs):
-                            results[idx] = self.translate_single_en_to_id(batch_texts[i])
+                            ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                            results[idx] = self.translate_single_en_to_id(batch_texts[i], ja_context=ja_c)
                 except Exception:
                     for i, idx in enumerate(batch_idxs):
-                        results[idx] = self.translate_single_en_to_id(batch_texts[i])
+                        ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                        results[idx] = self.translate_single_en_to_id(batch_texts[i], ja_context=ja_c)
 
             processed += len(batch_idxs)
             if progress_cb:
@@ -279,4 +303,4 @@ class SeaLLMTranslator:
             del self.llm
             self.llm = None
             gc.collect()
-            print("[SeaLLM 7B] Model di-unload dari RAM.")
+            print("[SeaLLM 1.5B] Model di-unload dari RAM.")

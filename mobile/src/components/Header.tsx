@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
           </View>
           <View style={styles.featureCol}>
             <Text style={styles.featureTitleLight}>100% OFFLINE AI</Text>
-            <Text style={styles.featureSubLight}>Sugoi V4 + SeaLLM 7B</Text>
+            <Text style={styles.featureSubLight}>Sugoi V4 + SeaLLM 1.5B</Text>
           </View>
         </View>
 
