@@ -170,7 +170,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>BAHASA TERJEMAHAN (MODEL AI)</Text>
         <View style={styles.grid2}>
-          {/* English Option */}
+          {/* English Fast */}
           <TouchableOpacity
             style={[
               styles.gridCard,
@@ -180,7 +180,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <View style={styles.gridCardHeader}>
-              <Text style={styles.gridCardTitle}>ENGLISH</Text>
+              <Text style={styles.gridCardTitle}>EN (FAST)</Text>
               <View
                 style={[
                   styles.radioDot,
@@ -188,7 +188,28 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
                 ]}
               />
             </View>
-            <Text style={styles.gridCardSub}>Sugoi V4 (Cepat)</Text>
+            <Text style={styles.gridCardSub}>Sugoi V4</Text>
+          </TouchableOpacity>
+
+          {/* English Polished */}
+          <TouchableOpacity
+            style={[
+              styles.gridCard,
+              targetLang === 'en_polished' && styles.gridCardActive,
+            ]}
+            onPress={() => setTargetLang('en_polished')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.gridCardHeader}>
+              <Text style={styles.gridCardTitle}>EN (POLISH)</Text>
+              <View
+                style={[
+                  styles.radioDot,
+                  targetLang === 'en_polished' && styles.radioDotActive,
+                ]}
+              />
+            </View>
+            <Text style={styles.gridCardSub}>Sugoi + AI</Text>
           </TouchableOpacity>
 
           {/* Indonesian Option */}
@@ -209,7 +230,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
                 ]}
               />
             </View>
-            <Text style={styles.gridCardSub}>Bridge Sugoi + SeaLLM</Text>
+            <Text style={styles.gridCardSub}>SeaLLM 1.5B</Text>
           </TouchableOpacity>
         </View>
       </View>

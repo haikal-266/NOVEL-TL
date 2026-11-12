@@ -67,7 +67,7 @@ class GenerateRequest(BaseModel):
     rangeType: Literal["current", "range", "all"]
     customRange: Optional[str] = None  # e.g. "1-5" or "1,2,3"
     mode: Literal["translated", "bilingual", "raw"] = "translated"
-    targetLang: Literal["en", "id"] = "en"
+    targetLang: Literal["en", "en_polished", "id"] = "en"
     forceTranslate: bool = False
 
 class JobState(BaseModel):
@@ -274,14 +274,25 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         target_lang = getattr(req, "targetLang", "en") or "en"
         force_translate = getattr(req, "forceTranslate", False) or False
-        cache_flavor = "bridge_id" if target_lang == "id" else "sugoi_en"
+        if target_lang == "id":
+            cache_flavor = "bridge_id"
+        elif target_lang == "en_polished":
+            cache_flavor = "sugoi_en_polished"
+        else:
+            cache_flavor = "sugoi_en"
 
         job.totalChapters = len(selected_indices)
-        job.message = f"Menyiapkan {job.totalChapters} bab untuk translasi ({'BRIDGE JP->EN->ID' if target_lang == 'id' else 'JP->EN'})..."
+        if target_lang == "id":
+            job_desc = "BRIDGE JP->EN->ID"
+        elif target_lang == "en_polished":
+            job_desc = "HYBRID JP->EN (POLISHED)"
+        else:
+            job_desc = "JP->EN (SUGOI)"
+        job.message = f"Menyiapkan {job.totalChapters} bab untuk translasi ({job_desc})..."
 
         # Initialize translators
         sugoi = get_sugoi_translator()
-        seallm = get_seallm_translator(job=job) if target_lang == "id" else None
+        seallm = get_seallm_translator(job=job) if target_lang in ("id", "en_polished") else None
 
         # Translate metadata if not present (or if forceTranslate is requested)
         title_meta_key = f"title_{target_lang}"
@@ -303,6 +314,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             novel_info["title_en"] = title_en
             if target_lang == "id" and seallm:
                 novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en, ja_context=novel_info["title"])
+            elif target_lang == "en_polished" and seallm:
+                novel_info[title_meta_key] = seallm.polish_single_en(title_en, ja_context=novel_info["title"])
             else:
                 novel_info[title_meta_key] = title_en
 
@@ -384,6 +397,40 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                     progress_cb=on_id_progress
                 )
                 final_translations = id_texts
+
+            elif target_lang == "en_polished" and seallm:
+                # ====== HYBRID POLISHED (JP -> SUGOI EN -> POLISHED EN) ======
+                # Step 1: Check if sugoi_en is already in cache to save time
+                cached_sugoi = None if force_translate else cache.load_episode(ep_id, "sugoi_en")
+                if cached_sugoi and cached_sugoi.get("paragraphs"):
+                    job.message = f"Bab {chap_i}/{job.totalChapters}: Memuat draf Sugoi dari cache..."
+                    en_title = cached_sugoi.get("title_tl", "")
+                    en_texts = [p.get("tl", "") for p in cached_sugoi.get("paragraphs", [])]
+                else:
+                    job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
+                    en_title = clean_english_text(sugoi.translate_single(ep_title_ja))
+                    en_texts = sugoi.translate_texts(clean_texts, batch_size=16)
+
+                if job.cancelled:
+                    break
+
+                # Step 2: Polish EN via SeaLLM 1.5B (Yen Press style light novel editor)
+                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 Poles Tata Bahasa (AI Editor)..."
+                title_tl = seallm.polish_single_en(en_title, ja_context=ep_title_ja)
+                job.chapterTitle = title_tl
+
+                def on_polish_progress(done: int, total: int) -> None:
+                    job.paragraphsDone = done
+                    current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
+                    job.progressPercent = min(90, int(current_pct))
+
+                polished_texts = seallm.polish_en_batch(
+                    en_texts,
+                    ja_texts=clean_texts,
+                    batch_size=4,
+                    progress_cb=on_polish_progress
+                )
+                final_translations = [clean_english_text(t) for t in polished_texts]
 
             else:
                 # ====== STANDARD JP -> EN (Sugoi V4) ======
@@ -470,7 +517,12 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         else:
             chap_suffix = " - Complete"
 
-        lang_suffix = " (Bahasa Indonesia)" if target_lang == "id" else ""
+        if target_lang == "id":
+            lang_suffix = " (Bahasa Indonesia)"
+        elif target_lang == "en_polished":
+            lang_suffix = " (English Polished)"
+        else:
+            lang_suffix = ""
         filename = f"{clean_title}{chap_suffix}{lang_suffix}.epub"
         output_dir = os.path.abspath("output")
         os.makedirs(output_dir, exist_ok=True)

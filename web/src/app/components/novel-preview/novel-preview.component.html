@@ -144,18 +144,18 @@
     <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
       Bahasa Terjemahan (Model AI)
     </label>
-    <div class="grid grid-cols-2 gap-3 sm:gap-3.5">
-      <!-- English Option (Default & Fastest) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+      <!-- English Option (Fast & Standard) -->
       <div
         role="button"
         tabindex="0"
         (click)="setTargetLang('en')"
         [class.neo-card-active]="targetLang === 'en'"
-        class="neo-card-sm p-3.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
       >
         <div class="flex items-center justify-between gap-1 mb-1">
           <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            ENGLISH
+            EN (FAST)
           </span>
           <div
             class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
@@ -168,7 +168,34 @@
           </div>
         </div>
         <p class="text-[9px] font-mono font-bold text-gray-500">
-          Sugoi V4 (Ultra Cepat)
+          Sugoi V4 (~3 dtk/bab)
+        </p>
+      </div>
+
+      <!-- English Polished Option (Hybrid Sugoi + AI Proofreader) -->
+      <div
+        role="button"
+        tabindex="0"
+        (click)="setTargetLang('en_polished')"
+        [class.neo-card-active]="targetLang === 'en_polished'"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+      >
+        <div class="flex items-center justify-between gap-1 mb-1">
+          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
+            EN (POLISHED)
+          </span>
+          <div
+            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
+            [class.bg-black]="targetLang === 'en_polished'"
+            [class.bg-white]="targetLang !== 'en_polished'"
+          >
+            @if (targetLang === 'en_polished') {
+              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
+            }
+          </div>
+        </div>
+        <p class="text-[9px] font-mono font-bold text-gray-500">
+          Sugoi + AI Editor
         </p>
       </div>
 
@@ -178,7 +205,7 @@
         tabindex="0"
         (click)="setTargetLang('id')"
         [class.neo-card-active]="targetLang === 'id'"
-        class="neo-card-sm p-3.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
       >
         <div class="flex items-center justify-between gap-1 mb-1">
           <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
@@ -195,7 +222,7 @@
           </div>
         </div>
         <p class="text-[9px] font-mono font-bold text-gray-500">
-          SeaLLM 1.5B (Bahasa Indo)
+          SeaLLM 1.5B (Sastra)
         </p>
       </div>
     </div>

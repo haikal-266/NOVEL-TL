@@ -149,10 +149,13 @@ class SugoiTranslator:
             # Tokenize
             tokenized_batch = [self.sp_source.encode(t, out_type=str) for t in batch_texts]
 
-            # Translate
+            # Translate using optimal Sugoi V4 beam search and anti-repetition settings
             outputs = self.translator.translate_batch(
                 tokenized_batch,
-                beam_size=3,
+                beam_size=5,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3,
+                replace_unknowns=True,
                 max_batch_size=batch_size
             )
 

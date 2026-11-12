@@ -24,7 +24,7 @@ export interface NovelInspectResponse {
 
 export type RangeType = 'current' | 'range' | 'all';
 export type TranslationMode = 'translated' | 'bilingual' | 'raw';
-export type TargetLanguage = 'en' | 'id';
+export type TargetLanguage = 'en' | 'en_polished' | 'id';
 
 export interface GenerateRequest {
   url: string;

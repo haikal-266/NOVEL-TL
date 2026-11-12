@@ -38,6 +38,20 @@ SYSTEM_PROMPT_EN_ID = (
     "DILARANG menulis komentar apapun selain nomor dan teks hasil terjemahan langsung."
 )
 
+SYSTEM_PROMPT_EN_POLISH = (
+    "You are an expert light novel editor and proofreader for professional English publications (such as Yen Press and J-Novel Club). "
+    "Your mission is to polish raw machine-translated English paragraphs into fluid, vivid, and emotionally natural English light novel prose.\n\n"
+    "EDITORIAL GUIDELINES:\n"
+    "1. Strict Faithfulness: Keep the exact meaning, actions, and events intact. Do NOT add new plot elements or fabricate content.\n"
+    "2. Pronoun & Gender Consistency: Fix omitted or incorrect pronouns (she/he/I/they). If a gender cue is provided ([Female]/[Male]), use the correct gendered pronouns consistently.\n"
+    "3. Rhythmic Prose: Break long, awkward run-on sentences into crisp, natural English novel sentences.\n"
+    "4. Natural Dialogue: Polish dialogue tags into standard English formatting (e.g., '\"Wait,\" she said' instead of '\"Wait.\" Saying so she said').\n"
+    "5. Format output with identical line numbers:\n"
+    "[1] <polished paragraph 1>\n"
+    "[2] <polished paragraph 2>\n"
+    "Output ONLY the numbered polished paragraphs. Do NOT include any introductory comments, notes, or explanations."
+)
+
 
 def get_seallm_model_path(
     filename: str = DEFAULT_FILENAME,
@@ -162,15 +176,17 @@ class SeaLLMTranslator:
 
         # Remove leaked gender hints or context snippets
         text = re.sub(r"\(Konteks asli:.*?\)", "", text).strip()
-        text = re.sub(r"\[(Karakter:\s*)?(Perempuan|Laki-laki)\]", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\(Original context:.*?\)", "", text).strip()
+        text = re.sub(r"\[(Karakter|Character):\s*(Perempuan|Laki-laki|Female|Male)\]", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\[(Perempuan|Laki-laki|Female|Male)\]", "", text, flags=re.IGNORECASE).strip()
 
         meta_patterns = [
             r"^(Teks ini|Teks di atas|Kalimat ini)\s+sudah\s+(dalam\s+)?bahasa\s+indonesia.*$",
             r"^.*tidak\s+perlu\s+diterjemahkan.*$",
             r"^.*tidak\s+perlu\s+terjemahan.*$",
-            r"^(Catatan|Note|Terjemahan|Hasil terjemahan|Artinya)\s*:\s*",
+            r"^(Catatan|Note|Terjemahan|Hasil terjemahan|Artinya|Polished|Edited)\s*:\s*",
             r"^Berikut\s+(adalah\s+)?hasil\s+terjemahan.*:\s*",
-            r"^Here\s+is\s+the\s+translation.*:\s*",
+            r"^Here\s+is\s+the\s+(translation|polished|edited).*?:\s*",
         ]
         for pat in meta_patterns:
             if re.search(pat, text, flags=re.IGNORECASE):
@@ -303,6 +319,116 @@ class SeaLLMTranslator:
                     for i, idx in enumerate(batch_idxs):
                         ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
                         results[idx] = self.translate_single_en_to_id(batch_texts[i], ja_context=ja_c)
+
+            processed += len(batch_idxs)
+            if progress_cb:
+                progress_cb(processed, total)
+
+        return results
+
+    def polish_single_en(self, text: str, ja_context: str = "") -> str:
+        """Polish a single rough English sentence/title into fluent light novel prose."""
+        if not text or not text.strip():
+            return ""
+
+        hint = ""
+        gender = detect_gender_cues(ja_context)
+        if gender == "FEMALE":
+            hint = " [Character: Female]"
+        elif gender == "MALE":
+            hint = " [Character: Male]"
+
+        user_content = f"{text.strip()}{hint}"
+        prompt = (
+            f"<|im_start|>system\n{SYSTEM_PROMPT_EN_POLISH}\n"
+            "Output ONLY the polished English text without any additional commentary.<|im_end|>\n"
+            f"<|im_start|>user\n{user_content}<|im_end|>\n"
+            f"<|im_start|>assistant\n"
+        )
+
+        output = self.llm(
+            prompt,
+            max_tokens=max(128, len(text.split()) * 4),
+            temperature=0.2,
+            top_p=0.9,
+            stop=["<|im_end|>", "<|endoftext|>"]
+        )
+
+        res = self._clean_output(output["choices"][0]["text"], fallback_orig=text)
+        if re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", res) or not res:
+            return text.strip()
+        return res
+
+    def polish_en_batch(
+        self,
+        texts: List[str],
+        ja_texts: Optional[List[str]] = None,
+        batch_size: int = 4,
+        progress_cb: Optional[Callable[[int, int], None]] = None
+    ) -> List[str]:
+        """
+        Polish a list of rough English paragraphs in batches using the local LLM.
+        """
+        results = [""] * len(texts)
+        valid_indices = [i for i, t in enumerate(texts) if t and t.strip()]
+
+        if not valid_indices:
+            return results
+
+        total = len(valid_indices)
+        processed = 0
+
+        chunk_size = max(1, min(batch_size, 4))
+        for b_start in range(0, total, chunk_size):
+            time.sleep(0.02)  # Yield CPU to keep FastAPI responsive
+            batch_idxs = valid_indices[b_start : b_start + chunk_size]
+            batch_texts = [texts[idx].strip() for idx in batch_idxs]
+
+            if len(batch_texts) == 1:
+                ja_c = ja_texts[batch_idxs[0]] if ja_texts and batch_idxs[0] < len(ja_texts) else ""
+                results[batch_idxs[0]] = self.polish_single_en(batch_texts[0], ja_context=ja_c)
+            else:
+                lines = []
+                for i, idx in enumerate(batch_idxs):
+                    en_t = batch_texts[i]
+                    ja_t = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                    gender = detect_gender_cues(ja_t)
+                    gender_hint = " [Female]" if gender == "FEMALE" else (" [Male]" if gender == "MALE" else "")
+                    lines.append(f"[{i+1}] {en_t}{gender_hint}")
+
+                numbered_input = "\n".join(lines)
+                prompt = (
+                    f"<|im_start|>system\n{SYSTEM_PROMPT_EN_POLISH}<|im_end|>\n"
+                    f"<|im_start|>user\n{numbered_input}<|im_end|>\n"
+                    f"<|im_start|>assistant\n"
+                )
+
+                try:
+                    output = self.llm(
+                        prompt,
+                        max_tokens=min(2048, 250 * len(batch_texts)),
+                        temperature=0.2,
+                        top_p=0.9,
+                        stop=["<|im_end|>", "<|endoftext|>"]
+                    )
+                    raw_out = output["choices"][0]["text"].strip()
+                    parsed = re.findall(r"\[(\d+)\]\s*(.*?)(?=(?:\n\s*\[\d+\])|\Z)", raw_out, flags=re.DOTALL)
+                    parsed_dict = {int(num): text.strip() for num, text in parsed}
+
+                    if len(parsed_dict) == len(batch_texts):
+                        for i, idx in enumerate(batch_idxs):
+                            polished = self._clean_output(parsed_dict.get(i + 1, ""), fallback_orig=batch_texts[i])
+                            if re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", polished) or not polished:
+                                polished = batch_texts[i]
+                            results[idx] = polished
+                    else:
+                        for i, idx in enumerate(batch_idxs):
+                            ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                            results[idx] = self.polish_single_en(batch_texts[i], ja_context=ja_c)
+                except Exception:
+                    for i, idx in enumerate(batch_idxs):
+                        ja_c = ja_texts[idx] if ja_texts and idx < len(ja_texts) else ""
+                        results[idx] = self.polish_single_en(batch_texts[i], ja_context=ja_c)
 
             processed += len(batch_idxs)
             if progress_cb:
