@@ -6,10 +6,12 @@ High-speed, offline Japanese-to-English translation tuned for light novels and v
 import os
 import sys
 import time
+import re
 import urllib.request
-from typing import List, Optional, Callable
+from typing import List, Dict, Tuple, Optional, Callable
 import ctranslate2
 import sentencepiece as spm
+from core.speech_markers import correct_pronoun_gender
 
 MODEL_REPO = "entai2965/sugoi-v4-ja-en-ctranslate2"
 DEFAULT_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "models", "sugoi_v4")
@@ -66,6 +68,82 @@ def ensure_model_downloaded(model_dir: str = DEFAULT_MODEL_DIR) -> str:
         os.rename(dest_path + ".tmp", dest_path)
 
     return model_dir
+
+
+def split_japanese_sentences(text: str) -> List[str]:
+    """
+    Split a Japanese text/paragraph into individual sentences for NMT translation.
+    Protects dialogue quotes 「...」 and 『...』 so sentences inside quotes are not broken apart.
+    """
+    if not text or not text.strip():
+        return []
+
+    text = text.strip()
+
+    # If the entire line is a single dialogue, keep as one unit
+    if (text.startswith("「") and text.endswith("」")) or (text.startswith("『") and text.endswith("』")):
+        return [text]
+
+    tokens = []
+    current = ""
+    in_quote = False
+    quote_char = ""
+
+    for ch in text:
+        current += ch
+        if ch in ("「", "『"):
+            in_quote = True
+            quote_char = "」" if ch == "「" else "』"
+        elif in_quote and ch == quote_char:
+            in_quote = False
+        elif not in_quote and ch in ("。", "！", "？", "\n"):
+            tokens.append(current.strip())
+            current = ""
+
+    if current.strip():
+        tokens.append(current.strip())
+
+    result = [t for t in tokens if t]
+    return result if result else [text]
+
+
+def clean_dialogue_and_narration(ja_text: str, en_text: str) -> str:
+    """
+    Enforces strict quotation accuracy:
+    - If JA has NO quotes, EN must NOT have hallucinated quotes.
+    - If JA is a full dialogue line, EN MUST have matching quotes.
+    - Normalizes all quote marks to standard ASCII double quotes.
+    """
+    ja = ja_text.strip()
+    en = en_text.strip()
+
+    # Normalize quotes
+    en = en.replace("「", '"').replace("」", '"')
+    en = en.replace("“", '"').replace("”", '"')
+    en = en.replace("『", '"').replace("』", '"')
+    en = en.replace("’", "'").replace("‘", "'")
+
+    has_ja_quotes = ("「" in ja) or ("『" in ja)
+    is_ja_full_dialogue = (ja.startswith("「") and ja.endswith("」")) or \
+                          (ja.startswith("『") and ja.endswith("』"))
+
+    if not has_ja_quotes:
+        # Case 1: Pure narrative. Strip any hallucinated quotes/apologies from Sugoi!
+        en = re.sub(r'^"[^"]*"\s*', '', en)
+        en = en.replace('"', '').strip()
+        return en
+
+    if is_ja_full_dialogue:
+        # Case 2: Pure dialogue line. Ensure it is cleanly wrapped with quotes.
+        inner = en.strip('"').strip()
+        inner = re.sub(r'^-+\s*', '', inner).strip()
+        return f'"{inner}"'
+
+    # Case 3: Mixed dialogue + narration (e.g. 「何してるの？」と彼女は尋ねた。)
+    if en.count('"') % 2 != 0:
+        en = en + '"'
+
+    return en
 
 
 class SugoiTranslator:
@@ -130,21 +208,33 @@ class SugoiTranslator:
     ) -> List[str]:
         """
         Translate a list of Japanese texts/paragraphs to English.
-        Empty texts are returned as empty strings without invoking the model.
+        - Splits multi-sentence paragraphs into individual sentence units to prevent NMT hallucinations.
+        - Batches all units concurrently for ultra-fast CTranslate2 inference.
+        - Protects dialogue quotes (Dialogue Quote Guard).
+        - Corrects misidentified gender pronouns using Japanese speech markers.
         """
         results = [""] * len(texts)
-        
-        # Identify non-empty items
-        valid_indices = [i for i, t in enumerate(texts) if t and t.strip()]
-        if not valid_indices:
+
+        # Expand non-empty paragraphs into sentence units, keeping track of paragraph index
+        unit_map: List[Tuple[int, str]] = []
+        for idx, text in enumerate(texts):
+            if text and text.strip():
+                units = split_japanese_sentences(text)
+                for u in units:
+                    unit_map.append((idx, u))
+
+        if not unit_map:
             return results
 
-        total = len(valid_indices)
-        processed = 0
+        total_units = len(unit_map)
+        processed_units = 0
+        translated_units: List[str] = [""] * total_units
 
-        for b_start in range(0, len(valid_indices), batch_size):
-            batch_idxs = valid_indices[b_start : b_start + batch_size]
-            batch_texts = [texts[idx].strip() for idx in batch_idxs]
+        # Translate in batches
+        for b_start in range(0, total_units, batch_size):
+            b_end = min(b_start + batch_size, total_units)
+            batch_items = unit_map[b_start:b_end]
+            batch_texts = [item[1] for item in batch_items]
 
             # Tokenize
             tokenized_batch = [self.sp_source.encode(t, out_type=str) for t in batch_texts]
@@ -160,14 +250,38 @@ class SugoiTranslator:
             )
 
             # Decode
-            for idx, out in zip(batch_idxs, outputs):
+            for i, out in enumerate(outputs):
                 hyp = out.hypotheses[0]
                 decoded = self.sp_target.decode(hyp).replace("<unk>", "").strip()
-                results[idx] = decoded
+                translated_units[b_start + i] = decoded
 
-            processed += len(batch_idxs)
+            processed_units += len(batch_items)
             if progress_cb:
-                progress_cb(processed, total)
+                progress_cb(processed_units, total_units)
+
+        # Post-process and group units back into paragraphs
+        para_units_map: Dict[int, List[str]] = {}
+        for (para_idx, ja_unit), en_unit in zip(unit_map, translated_units):
+            # Apply dialogue quote guard
+            cleaned_en = clean_dialogue_and_narration(ja_unit, en_unit)
+            # Apply speech marker gender correction
+            gender_en = correct_pronoun_gender(ja_unit, cleaned_en)
+
+            # Ensure sentence has terminal punctuation if Japanese sentence ended with punctuation
+            if ja_unit.endswith(("。", "！", "？")) and not gender_en.endswith((".", "!", "?", '"', "'")):
+                gender_en += "."
+
+            if para_idx not in para_units_map:
+                para_units_map[para_idx] = []
+            para_units_map[para_idx].append(gender_en)
+
+        # Assemble final paragraphs
+        for para_idx, unit_list in para_units_map.items():
+            joined = " ".join(unit_list)
+            # Clean punctuation spacing: space before punctuation -> no space
+            joined = re.sub(r'\s+([,.:;!?])', r'\1', joined)
+            joined = re.sub(r'\s+', ' ', joined).strip()
+            results[para_idx] = joined
 
         return results
 

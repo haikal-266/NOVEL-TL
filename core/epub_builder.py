@@ -20,7 +20,9 @@ def clean_english_text(text: str) -> str:
     text = text.replace("♪", "").replace("〜", " - ").replace("～", " - ")
     # Replace Japanese corner brackets and decorative brackets
     text = text.replace("「", '"').replace("」", '"')
+    text = text.replace("“", '"').replace("”", '"')
     text = text.replace("『", "'").replace("』", "'")
+    text = text.replace("‘", "'").replace("’", "'")
     text = text.replace("【", "[").replace("】", "]")
     text = text.replace("〔", "[").replace("〕", "]")
     text = text.replace("〈", "<").replace("〉", ">")
@@ -40,11 +42,17 @@ DEFAULT_CSS = """
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-    line-height: 1.45;
+    line-height: 1.6;
     margin: 2% 4%;
     font-size: 1.0em;
     color: #1a1a1a;
     background-color: transparent;
+}
+
+p {
+    text-indent: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.85em !important;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -67,7 +75,7 @@ h1.chapter-title {
     font-size: 1.35em;
     font-weight: 700;
     text-align: center;
-    margin: 0.8em 0 0.6em 0;
+    margin: 1.2em 0 1.0em 0;
     padding-bottom: 0.4em;
     border-bottom: 1px solid #cbd5e1;
     line-height: 1.3;
@@ -97,47 +105,51 @@ h1.title-heading {
     margin: 0.3em 0;
 }
 
-/* Standard paragraph: rapat dan nyaman dibaca */
+/* Standard paragraph: NO tab/indent, comfortable modern novel spacing */
 p.story-p {
-    text-indent: 1.2em;
-    margin-top: 0;
-    margin-bottom: 0.25em;
+    text-indent: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.85em !important;
     word-break: break-word;
+    line-height: 1.6;
 }
 
-/* Blank line / scene pause: jeda adegan halus tanpa ruang kosong raksasa */
+/* Blank line / scene pause: clean scene break */
 p.blank-line {
-    text-indent: 0;
-    margin: 0.35em 0;
-    height: 0.3em;
-    font-size: 0.3em;
-    line-height: 0.3em;
+    text-indent: 0 !important;
+    margin: 1.2em 0 !important;
+    height: 0.5em;
+    font-size: 0.5em;
+    line-height: 0.5em;
 }
 
-/* Dialogue lines */
+/* Dialogue lines: NO tab/indent, distinct spacing between speakers */
 p.dialogue {
-    text-indent: 0.2em;
-    margin-top: 0;
-    margin-bottom: 0.25em;
+    text-indent: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.85em !important;
+    word-break: break-word;
+    line-height: 1.6;
 }
 
 /* Bilingual block */
 div.bilingual-block {
-    margin-bottom: 0.6em;
+    margin-bottom: 1.0em;
 }
 
 .ja-text {
     font-size: 0.85em;
     color: #64748b;
     line-height: 1.4;
-    margin-bottom: 0.15em;
-    text-indent: 1em;
+    margin-bottom: 0.25em;
+    text-indent: 0 !important;
 }
 
 .tl-text {
     font-size: 1.0em;
-    line-height: 1.45;
-    text-indent: 1.2em;
+    line-height: 1.6;
+    text-indent: 0 !important;
+    margin-bottom: 0.8em;
 }
 
 /* Synopsis page */
@@ -234,7 +246,7 @@ class EPUBBuilder:
         author = self.display_author
         url = self.novel_info.get("url", "")
         
-        mode_desc = "English Translation" if self.target_lang == "en" else "Terjemahan Bahasa Indonesia"
+        mode_desc = "English Translation" if self.target_lang == "en" else "Indonesian Translation"
         if self.mode == "bilingual":
             mode_desc = "Bilingual Edition (Japanese & English)"
 
@@ -249,14 +261,14 @@ class EPUBBuilder:
     <div style="text-align: center; margin-top: 3em;">
         <h1 class="title-heading">{html.escape(title)}</h1>
         <div class="novel-meta">
-            <p><strong>Penulis / Author:</strong> {html.escape(author)}</p>
-            <p><strong>Edisi:</strong> {mode_desc}</p>
-            <p><strong>Sumber:</strong> <a href="{html.escape(url)}">Kakuyomu Original</a></p>
+            <p><strong>Author:</strong> {html.escape(author)}</p>
+            <p><strong>Edition:</strong> {mode_desc}</p>
+            <p><strong>Source:</strong> <a href="{html.escape(url)}">Kakuyomu Original</a></p>
         </div>
     </div>
 </body>
 </html>"""
-        tp = epub.EpubHtml(title="Detail Buku", file_name="titlepage.xhtml", lang=self.target_lang)
+        tp = epub.EpubHtml(title="Book Details", file_name="titlepage.xhtml", lang=self.target_lang)
         tp.content = html_content
         tp.add_item(self.nav_css)
         self.book.add_item(tp)

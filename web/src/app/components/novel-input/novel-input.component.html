@@ -7,7 +7,7 @@
         <span>INPUT</span>
       </span>
       <h2 class="font-black text-xs uppercase tracking-wide text-[#1A1A1A]">
-        Link Novel Kakuyomu
+        Kakuyomu Novel URL
       </h2>
     </div>
 
@@ -18,7 +18,7 @@
         class="text-[10px] font-bold text-gray-400 hover:text-black font-mono inline-flex items-center gap-1"
       >
         <app-icon name="trash" [size]="11" />
-        <span>Hapus</span>
+        <span>Clear</span>
       </button>
     }
   </div>
@@ -42,7 +42,7 @@
         class="neo-badge bg-[#FFC0AD] hover:bg-[#ffd7cb] text-[#55423C] text-[9px] px-2 py-0.5 transition-all inline-flex items-center gap-1 border border-black active:scale-95"
       >
         <app-icon name="sparkle" [size]="10" class="text-black" />
-        <span>Pakai Contoh Romcom</span>
+        <span>Use Example Link</span>
       </button>
       <span class="text-[9px] font-mono text-gray-400 font-bold">kakuyomu.jp</span>
     </div>
@@ -56,9 +56,9 @@
     >
       @if (isLoading) {
         <span class="inline-block w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-        <span>MEMERIKSA KAKUYOMU...</span>
+        <span>INSPECTING KAKUYOMU...</span>
       } @else {
-        <span>AMBIL DETAIL NOVEL</span>
+        <span>FETCH NOVEL DETAILS</span>
         <app-icon name="arrow-right" [size]="14" />
       }
     </button>

@@ -67,7 +67,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               <View style={styles.badgeLime}>
                 <Ionicons name="server" size={14} color="#121212" />
               </View>
-              <Text style={styles.title}>Koneksi Backend AI</Text>
+              <Text style={styles.title}>AI Backend Connection</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Feather name="x" size={18} color="#121212" />
@@ -75,7 +75,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           </View>
 
           <Text style={styles.desc}>
-            Masukkan alamat IP laptop/PC kamu yang menjalankan server.py (port 8000) atau link Cloudflare Tunnel.
+            Enter the IP address of your laptop/PC running server.py (port 8000) or your Cloudflare Tunnel URL.
           </Text>
 
           {/* Input Box */}
@@ -101,7 +101,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               onPress={() => setUrl('http://192.168.100.76:8000')}
               activeOpacity={0.8}
             >
-              <Text style={styles.presetText}>IP Wi-Fi Laptop</Text>
+              <Text style={styles.presetText}>Laptop Wi-Fi</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.presetBtn}
@@ -123,7 +123,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           {testing && (
             <View style={styles.testStatusRow}>
               <ActivityIndicator size="small" color="#121212" />
-              <Text style={styles.testStatusText}>Menghubungi server...</Text>
+              <Text style={styles.testStatusText}>Connecting to server...</Text>
             </View>
           )}
 
@@ -131,7 +131,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             <View style={[styles.testStatusRow, { backgroundColor: THEME.colors.successLight }]}>
               <Feather name="check-circle" size={15} color="#065F46" />
               <Text style={[styles.testStatusText, { color: '#065F46' }]}>
-                Server Terhubung! (200 OK)
+                Connected! (200 OK)
               </Text>
             </View>
           )}
@@ -140,7 +140,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             <View style={[styles.testStatusRow, { backgroundColor: THEME.colors.dangerLight }]}>
               <Feather name="alert-circle" size={15} color={THEME.colors.danger} />
               <Text style={[styles.testStatusText, { color: THEME.colors.danger }]}>
-                Gagal terhubung. Pastikan PC & HP di Wi-Fi yang sama.
+                Connection failed. Make sure PC & phone are on the same Wi-Fi network.
               </Text>
             </View>
           )}
@@ -154,7 +154,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               activeOpacity={0.8}
             >
               <Feather name="activity" size={14} color="#121212" />
-              <Text style={styles.btnSecondaryText}>Tes Ping</Text>
+              <Text style={styles.btnSecondaryText}>Test Ping</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -163,7 +163,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               activeOpacity={0.8}
             >
               <Feather name="check" size={14} color="#121212" />
-              <Text style={styles.btnPrimaryText}>Simpan</Text>
+              <Text style={styles.btnPrimaryText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>

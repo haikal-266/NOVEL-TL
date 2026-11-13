@@ -64,3 +64,51 @@ def format_context_snippet(ja_text: str, max_chars: int = 50) -> str:
     if len(clean) > max_chars:
         return clean[:max_chars] + "…"
     return clean
+
+
+def correct_pronoun_gender(ja_text: str, en_text: str) -> str:
+    """
+    Corrects misidentified gender pronouns in English based on Japanese speech markers.
+    Only modifies text if the Japanese cues are unambiguously FEMALE or MALE.
+    """
+    gender = detect_gender_cues(ja_text)
+    if not gender or not en_text:
+        return en_text
+
+    text = en_text
+    if gender == "FEMALE":
+        # Japanese is unambiguously female, but English used male pronouns
+        replacements = [
+            (r"\bHe\b", "She"),
+            (r"\bhe\b", "she"),
+            (r"\bHimself\b", "Herself"),
+            (r"\bhimself\b", "herself"),
+            (r"\bHis\b", "Her"),
+            (r"\bhis\b", "her"),
+            (r"\bHim\b", "Her"),
+            (r"\bhim\b", "her"),
+        ]
+        for pattern, repl in replacements:
+            text = re.sub(pattern, repl, text)
+
+    elif gender == "MALE":
+        # Japanese is unambiguously male, but English used female pronouns
+        replacements = [
+            (r"\bShe\b", "He"),
+            (r"\bshe\b", "he"),
+            (r"\bHerself\b", "Himself"),
+            (r"\bherself\b", "himself"),
+            (r"\bHers\b", "His"),
+            (r"\bhers\b", "his"),
+            # 'her' followed by noun is possessive 'his'
+            (r"\bHer\s+([a-zA-Z]+)", r"His \1"),
+            (r"\bher\s+([a-zA-Z]+)", r"his \1"),
+            # Remaining 'her' is objective 'him'
+            (r"\bHer\b", "Him"),
+            (r"\bher\b", "him"),
+        ]
+        for pattern, repl in replacements:
+            text = re.sub(pattern, repl, text)
+
+    return text
+

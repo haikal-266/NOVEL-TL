@@ -56,14 +56,27 @@ body {
     box-shadow: 1px 1px 0px #000000;
   }
 
-  /* Active/Selected Card State with Bold Outline & Hard Shadow */
+  /* Active/Selected Card State with Bold Border & Shadow, NO bleeding outline */
   .neo-card-active {
     background-color: #D7FF28 !important;
-    border-color: #000000 !important;
-    outline: 3px solid #000000 !important;
-    outline-offset: 3px !important;
-    box-shadow: 5px 5px 0px #000000 !important;
+    border: 2.5px solid #000000 !important;
+    box-shadow: 4px 4px 0px #000000 !important;
     transform: translate(-1px, -1px);
+    outline: none !important;
+  }
+
+  /* Preserve white text on dark badges inside active cards */
+  .neo-card-active .bg-black,
+  .neo-card-active .bg-black * {
+    color: #ffffff !important;
+  }
+
+  /* High-contrast dark coffee for secondary text on lime background */
+  .neo-card-active .text-gray-400,
+  .neo-card-active .text-gray-500,
+  .neo-card-active .text-gray-600 {
+    color: #4A3B32 !important;
+    font-weight: 700 !important;
   }
 }
 

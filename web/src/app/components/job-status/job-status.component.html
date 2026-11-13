@@ -5,21 +5,21 @@
       @if (job.status === 'running' || job.status === 'pending') {
         <span class="inline-block w-3.5 h-3.5 bg-[#D7FF28] border-2 border-black rounded-full animate-ping flex-shrink-0"></span>
         <span class="font-black text-xs uppercase tracking-wide text-[#55423C] truncate">
-          MEMPROSES AI TRANSLASI...
+          PROCESSING AI TRANSLATION...
         </span>
       } @else if (job.status === 'completed') {
         <div class="w-5 h-5 bg-[#D7FF28] rounded-full border-2 border-black flex items-center justify-center flex-shrink-0">
           <app-icon name="check" [size]="12" class="text-black" />
         </div>
         <span class="font-black text-xs uppercase tracking-wide text-black truncate">
-          EPUB BERHASIL DIBUAT!
+          EPUB GENERATED SUCCESSFULLY!
         </span>
       } @else {
         <div class="w-5 h-5 bg-red-500 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0">
           <app-icon name="alert" [size]="12" class="text-white" />
         </div>
         <span class="font-black text-xs uppercase tracking-wide text-red-900 truncate">
-          TERJADI KESALAHAN
+          AN ERROR OCCURRED
         </span>
       }
     </div>
@@ -45,7 +45,7 @@
     @if (job.chapterTitle) {
       <div class="flex items-center justify-between text-[11px] text-gray-600 pt-2.5 mt-2 border-t border-gray-200 gap-2">
         <span class="font-bold text-black truncate flex-1 min-w-0">
-          Bab {{ job.currentChapter }}/{{ job.totalChapters }}: {{ job.chapterTitle }}
+          Chapter {{ job.currentChapter }}/{{ job.totalChapters }}: {{ job.chapterTitle }}
         </span>
         @if (job.paragraphsTotal > 0) {
           <span class="bg-[#FBFAF6] px-2 py-0.5 rounded border border-black text-black font-bold flex-shrink-0">
@@ -67,11 +67,11 @@
       >
         <app-icon name="close" [size]="14" class="text-black" />
         <span>
-          {{ isCancelling || job.cancelled ? 'Membatalkan... Merakit Bab Selesai' : 'Batalkan & Ambil Bab Selesai' }}
+          {{ isCancelling || job.cancelled ? 'Cancelling... Packaging Finished Chapters' : 'Cancel & Save Completed Chapters' }}
         </span>
       </button>
       <p class="text-[10px] text-center font-mono text-gray-800 font-bold mt-1.5">
-        Jika dibatalkan, bab yang telah selesai akan langsung dirakit menjadi file EPUB.
+        If cancelled, completed chapters will be immediately built into an EPUB file.
       </p>
     </div>
   }
@@ -85,7 +85,7 @@
         class="neo-btn w-full p-4 bg-[#D7FF28] text-black font-black text-center text-sm sm:text-base uppercase tracking-wider flex items-center justify-center gap-2 border-[2.5px] border-black hover:bg-[#cbf71e]"
       >
         <app-icon name="download" [size]="20" />
-        <span>DOWNLOAD FILE EPUB</span>
+        <span>DOWNLOAD EPUB FILE</span>
         <app-icon name="arrow-right" [size]="18" />
       </a>
 
@@ -104,7 +104,7 @@
         class="neo-btn w-full p-2.5 bg-white text-xs font-bold text-[#55423C] hover:bg-gray-100 flex items-center justify-center gap-1.5 border-2 border-black"
       >
         <app-icon name="refresh" [size]="14" />
-        <span>Buat EPUB untuk Novel Lainnya</span>
+        <span>Convert Another Novel</span>
       </button>
     </div>
   }
@@ -115,7 +115,7 @@
       <div class="neo-card-sm bg-red-100 border-2 border-red-800 p-3 text-xs text-red-900 font-bold flex items-start gap-2">
         <app-icon name="alert" [size]="16" class="text-red-700 mt-0.5" />
         <span class="flex-1">
-          {{ job.error || 'Gagal memproses novel. Pastikan koneksi atau format URL sesuai.' }}
+          {{ job.error || 'Failed to process novel. Please verify the URL or connection.' }}
         </span>
       </div>
       <button
@@ -124,7 +124,7 @@
         class="neo-btn w-full p-2.5 bg-white text-xs font-bold text-black border-2 border-black flex items-center justify-center gap-1.5"
       >
         <app-icon name="refresh" [size]="14" />
-        <span>Coba Lagi</span>
+        <span>Try Again</span>
       </button>
     </div>
   }

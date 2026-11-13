@@ -37,7 +37,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
       setDownloading(true);
       await downloadAndShareEpub(job.filename);
     } catch (err: any) {
-      Alert.alert('Gagal Membuka File', err.message || 'Terjadi kesalahan saat mengunduh file.');
+      Alert.alert('Failed to Open File', err.message || 'An error occurred while downloading the file.');
     } finally {
       setDownloading(false);
     }
@@ -51,7 +51,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
           {isRunning && (
             <>
               <View style={styles.pulsingDot} />
-              <Text style={styles.statusText}>MEMPROSES AI TRANSLASI...</Text>
+              <Text style={styles.statusText}>PROCESSING AI TRANSLATION...</Text>
             </>
           )}
           {isCompleted && (
@@ -59,7 +59,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
               <View style={styles.iconCircleGreen}>
                 <Feather name="check" size={12} color="#121212" />
               </View>
-              <Text style={styles.statusText}>EPUB BERHASIL DIBUAT!</Text>
+              <Text style={styles.statusText}>EPUB GENERATED SUCCESSFULLY!</Text>
             </>
           )}
           {isError && (
@@ -68,7 +68,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
                 <Feather name="alert-triangle" size={12} color="#FFF" />
               </View>
               <Text style={[styles.statusText, { color: '#991B1B' }]}>
-                TERJADI KESALAHAN
+                AN ERROR OCCURRED
               </Text>
             </>
           )}
@@ -96,7 +96,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
         {job.chapterTitle ? (
           <View style={styles.chapterInfoRow}>
             <Text style={styles.chapterTitleText} numberOfLines={1}>
-              Bab {job.currentChapter}/{job.totalChapters}: {job.chapterTitle}
+              Chapter {job.currentChapter}/{job.totalChapters}: {job.chapterTitle}
             </Text>
             {job.paragraphsTotal > 0 && (
               <View style={styles.parasBadge}>
@@ -121,12 +121,12 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
             <Feather name="x-circle" size={14} color="#121212" />
             <Text style={styles.cancelBtnText}>
               {job.cancelled
-                ? 'Membatalkan... Merakit Bab Selesai'
-                : 'BATALKAN & AMBIL BAB SELESAI'}
+                ? 'Cancelling... Packaging Finished Chapters'
+                : 'CANCEL & SAVE COMPLETED CHAPTERS'}
             </Text>
           </TouchableOpacity>
           <Text style={styles.cancelNotice}>
-            Bab yang telah selesai otomatis dirakit menjadi EPUB saat dibatalkan.
+            Finished chapters will be automatically packaged into an EPUB when cancelled.
           </Text>
         </View>
       )}
@@ -143,12 +143,12 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
             {downloading ? (
               <View style={styles.btnRow}>
                 <ActivityIndicator size="small" color="#121212" />
-                <Text style={styles.downloadBtnText}>Mengunduh EPUB...</Text>
+                <Text style={styles.downloadBtnText}>Downloading EPUB...</Text>
               </View>
             ) : (
               <View style={styles.btnRow}>
                 <Feather name="book-open" size={18} color="#121212" />
-                <Text style={styles.downloadBtnText}>BUKA / SIMPAN EPUB</Text>
+                <Text style={styles.downloadBtnText}>OPEN / SAVE EPUB</Text>
                 <Feather name="share-2" size={16} color="#121212" />
               </View>
             )}
@@ -172,7 +172,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
                 activeOpacity={0.8}
               >
                 <Feather name="sliders" size={13} color="#121212" />
-                <Text style={styles.actionSecondaryText}>Ubah Bab</Text>
+                <Text style={styles.actionSecondaryText}>Change Range</Text>
               </TouchableOpacity>
             )}
 
@@ -182,7 +182,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
               activeOpacity={0.8}
             >
               <Feather name="refresh-cw" size={13} color="#121212" />
-              <Text style={styles.actionSecondaryText}>Novel Baru</Text>
+              <Text style={styles.actionSecondaryText}>New Novel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -194,7 +194,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
           <View style={styles.errorBanner}>
             <Feather name="alert-circle" size={14} color="#B91C1C" />
             <Text style={styles.errorText}>
-              {job.error || 'Gagal memproses translasi novel.'}
+              {job.error || 'Failed to process novel translation.'}
             </Text>
           </View>
 
@@ -204,7 +204,7 @@ export const JobStatusCard: React.FC<JobStatusCardProps> = ({
             activeOpacity={0.8}
           >
             <Feather name="refresh-cw" size={14} color="#121212" />
-            <Text style={styles.retryBtnText}>Coba Lagi</Text>
+            <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       )}

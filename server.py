@@ -114,7 +114,7 @@ def get_seallm_translator(job: Optional[JobState] = None):
             model_path = get_seallm_model_path()
             if not is_seallm_installed():
                 if job:
-                    job.message = "Mengunduh model SeaLLM-v3-7B (4.4 GB) pertama kali dari Hugging Face..."
+                    job.message = "Downloading SeaLLM model for the first time from Hugging Face..."
                     job.progressPercent = 1
 
                 def on_download_progress(done_bytes: int, total_bytes: int, speed: float) -> bool:
@@ -124,14 +124,14 @@ def get_seallm_translator(job: Optional[JobState] = None):
                         pct = int((done_bytes / total_bytes) * 100) if total_bytes else 1
                         done_mb = done_bytes / (1024 * 1024)
                         total_mb = total_bytes / (1024 * 1024)
-                        job.message = f"Mengunduh AI SeaLLM 7B: {done_mb:.1f}/{total_mb:.1f} MB ({pct}%) [{speed:.1f} MB/s]..."
+                        job.message = f"Downloading SeaLLM: {done_mb:.1f}/{total_mb:.1f} MB ({pct}%) [{speed:.1f} MB/s]..."
                         job.progressPercent = min(99, pct)
                     return True
 
                 model_path = download_seallm_with_progress(progress_cb=on_download_progress)
 
             if job:
-                job.message = "Memuat model AI SeaLLM 7B ke RAM/CPU..."
+                job.message = "Loading SeaLLM model into memory..."
                 job.progressPercent = 1
 
             _seallm_translator = SeaLLMTranslator(model_path=model_path, n_threads=4, n_ctx=2048)
@@ -166,12 +166,24 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
 
     cache = CacheManager(work_id)
     cached = cache.load_novel_info()
-    if cached and cached.get("total_episodes"):
-        novel_info = cached
-    else:
+    
+    # Always fetch fresh TOC & metadata from Kakuyomu so new chapters are instantly detected
+    try:
         scraper = KakuyomuScraper(work_id)
-        novel_info = scraper.get_novel_info()
+        fresh_info = scraper.get_novel_info()
+        # Preserve existing translated titles/authors from cache
+        if cached:
+            for k in ["title_en", "author_en", "title_id", "author_id", "synopsis_en"]:
+                if cached.get(k) and not fresh_info.get(k):
+                    fresh_info[k] = cached[k]
+        novel_info = fresh_info
         cache.save_novel_info(novel_info)
+    except Exception as scrape_err:
+        print(f"[Inspect] Scraper error, falling back to cache: {scrape_err}")
+        if cached and cached.get("total_episodes"):
+            novel_info = cached
+        else:
+            raise HTTPException(status_code=502, detail=f"Failed to fetch novel from Kakuyomu: {scrape_err}")
 
     # Immediately translate novel title and author to English if not yet translated
     if not novel_info.get("title_en"):
@@ -288,7 +300,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             job_desc = "HYBRID JP->EN (POLISHED)"
         else:
             job_desc = "JP->EN (SUGOI)"
-        job.message = f"Menyiapkan {job.totalChapters} bab untuk translasi ({job_desc})..."
+        job.message = f"Preparing {job.totalChapters} chapters for translation ({job_desc})..."
 
         # Initialize translators
         sugoi = get_sugoi_translator()
@@ -353,14 +365,14 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             if cached_ep:
                 epub_chapters.append(cached_ep)
                 job.chapterTitle = cached_ep.get("title_tl") or ep_title_ja
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Memuat dari cache..."
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Loaded from cache..."
                 job.progressPercent = int((chap_i / job.totalChapters) * 90)
                 if job.cancelled:
                     break
                 continue
 
             # Fetch fresh content from Kakuyomu
-            job.message = f"Mengunduh Bab {chap_i}/{job.totalChapters}: {ep_title_ja}"
+            job.message = f"Fetching Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
             ep_content = scraper.get_episode_content(ep_id)
             paragraphs = ep_content["paragraphs"]
             clean_texts = [p["clean"] for p in paragraphs]
@@ -371,9 +383,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             chap_base = (chap_i - 1) / job.totalChapters
 
             if target_lang == "id" and seallm:
-                # ====== METODE JEMBATAN (BRIDGE: JP -> EN -> ID) ======
+                # ====== BRIDGE METHOD (JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 1 JP -> EN (Sugoi)..."
                 en_title = clean_english_text(sugoi.translate_single(ep_title_ja))
                 en_texts = sugoi.translate_texts(clean_texts, batch_size=16)
 
@@ -381,7 +393,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                     break
 
                 # Step 2: EN -> ID via SeaLLM 1.5B (Natural, literary Indonesian with speech markers)
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (SeaLLM 1.5B)..."
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 2 EN -> ID (SeaLLM)..."
                 title_tl = seallm.translate_single_en_to_id(en_title, ja_context=ep_title_ja)
                 job.chapterTitle = title_tl
 
@@ -403,11 +415,11 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 # Step 1: Check if sugoi_en is already in cache to save time
                 cached_sugoi = None if force_translate else cache.load_episode(ep_id, "sugoi_en")
                 if cached_sugoi and cached_sugoi.get("paragraphs"):
-                    job.message = f"Bab {chap_i}/{job.totalChapters}: Memuat draf Sugoi dari cache..."
+                    job.message = f"Chapter {chap_i}/{job.totalChapters}: Loading Sugoi draft from cache..."
                     en_title = cached_sugoi.get("title_tl", "")
                     en_texts = [p.get("tl", "") for p in cached_sugoi.get("paragraphs", [])]
                 else:
-                    job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
+                    job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 1 JP -> EN (Sugoi)..."
                     en_title = clean_english_text(sugoi.translate_single(ep_title_ja))
                     en_texts = sugoi.translate_texts(clean_texts, batch_size=16)
 
@@ -415,7 +427,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                     break
 
                 # Step 2: Polish EN via SeaLLM 1.5B (Yen Press style light novel editor)
-                job.message = f"Bab {chap_i}/{job.totalChapters}: Tahap 2 Poles Tata Bahasa (AI Editor)..."
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 2 Polish Grammar (AI Editor)..."
                 title_tl = seallm.polish_single_en(en_title, ja_context=ep_title_ja)
                 job.chapterTitle = title_tl
 
@@ -434,7 +446,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             else:
                 # ====== STANDARD JP -> EN (Sugoi V4) ======
-                job.message = f"Menerjemahkan Bab {chap_i}/{job.totalChapters}: {ep_title_ja}"
+                job.message = f"Translating Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
                 title_tl = clean_english_text(sugoi.translate_single(ep_title_ja))
                 job.chapterTitle = title_tl
 
@@ -479,11 +491,11 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         if job.cancelled:
             if not epub_chapters:
                 job.status = "error"
-                job.error = "Translasi dibatalkan oleh pengguna sebelum bab pertama selesai."
-                job.message = "Dibatalkan (0 bab selesai)."
+                job.error = "Translation cancelled by user before first chapter finished."
+                job.message = "Cancelled (0 chapters completed)."
                 return
             else:
-                job.message = f"Translasi dibatalkan. Merakit {len(epub_chapters)} bab yang telah selesai..."
+                job.message = f"Translation cancelled. Packaging {len(epub_chapters)} completed chapters..."
 
         # Build EPUB
         builder = EPUBBuilder(novel_info, mode=req.mode, target_lang=target_lang)
@@ -509,7 +521,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         if job.cancelled:
             first_idx = epub_chapters[0]["index"]
             last_idx = epub_chapters[-1]["index"]
-            chap_suffix = f" - Bab {first_idx}-{last_idx} (Dibatalkan - {len(epub_chapters)} Bab)"
+            chap_suffix = f" - Chapters {first_idx}-{last_idx} (Cancelled - {len(epub_chapters)} Chaps)"
         elif len(selected_indices) == 1:
             chap_suffix = f" - Chapter {selected_indices[0]}"
         elif len(selected_indices) < total_eps:
@@ -518,7 +530,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             chap_suffix = " - Complete"
 
         if target_lang == "id":
-            lang_suffix = " (Bahasa Indonesia)"
+            lang_suffix = " (Indonesian)"
         elif target_lang == "en_polished":
             lang_suffix = " (English Polished)"
         else:
@@ -538,16 +550,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         job.filename = filename
         job.downloadUrl = f"/api/download/{filename}"
         if job.cancelled:
-            job.message = f"Translasi dibatalkan! EPUB berhasil dibuat untuk {len(epub_chapters)} bab yang selesai."
+            job.message = f"Cancelled! EPUB successfully generated for {len(epub_chapters)} completed chapters."
         else:
-            job.message = f"Selesai! File EPUB berhasil dibuat."
+            job.message = f"Completed! EPUB file generated successfully."
 
     except Exception as e:
         print(f"[Worker Error] Job {job_id}: {e}")
         if job.cancelled:
             job.status = "error"
-            job.error = "Dibatalkan oleh pengguna."
-            job.message = "Proses dibatalkan oleh pengguna."
+            job.error = "Cancelled by user."
+            job.message = "Process cancelled by user."
         else:
             job.status = "error"
             job.error = str(e)
@@ -581,7 +593,7 @@ def cancel_job(job_id: str) -> JobState:
     job = JOBS[job_id]
     if job.status in ("running", "pending"):
         job.cancelled = True
-        job.message = "Membatalkan translasi... Menyelesaikan bab saat ini dan merakit EPUB..."
+        job.message = "Cancelling translation... Finalizing current chapter and generating EPUB..."
     return job
 
 

@@ -33,9 +33,9 @@ export const NovelInput: React.FC<NovelInputProps> = ({
         <View style={styles.badgeGroup}>
           <View style={styles.stepBadge}>
             <Ionicons name="flash" size={10} color="#121212" />
-            <Text style={styles.stepBadgeText}>LANGKAH 1</Text>
+            <Text style={styles.stepBadgeText}>STEP 1</Text>
           </View>
-          <Text style={styles.titleText}>LINK NOVEL KAKUYOMU</Text>
+          <Text style={styles.titleText}>KAKUYOMU NOVEL URL</Text>
         </View>
 
         {url.length > 0 && (
@@ -45,13 +45,13 @@ export const NovelInput: React.FC<NovelInputProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Feather name="trash-2" size={12} color="#6B7280" />
-            <Text style={styles.clearText}>Hapus</Text>
+            <Text style={styles.clearText}>Clear</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <Text style={styles.subtitle}>
-        Tempel tautan halaman utama atau salah satu bab dari Kakuyomu.
+        Paste Kakuyomu novel series URL or single chapter link.
       </Text>
 
       {/* Input Box */}
@@ -78,7 +78,7 @@ export const NovelInput: React.FC<NovelInputProps> = ({
       >
         <View style={styles.exampleLeft}>
           <Ionicons name="sparkles" size={12} color="#121212" />
-          <Text style={styles.exampleText}>PAKAI CONTOH ROMCOM</Text>
+          <Text style={styles.exampleText}>USE EXAMPLE ROMCOM</Text>
         </View>
         <Text style={styles.exampleDomain}>kakuyomu.jp</Text>
       </TouchableOpacity>
@@ -93,11 +93,11 @@ export const NovelInput: React.FC<NovelInputProps> = ({
         {isLoading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color="#121212" />
-            <Text style={styles.submitText}>MENGAMBIL DETAIL NOVEL...</Text>
+            <Text style={styles.submitText}>FETCHING NOVEL DETAILS...</Text>
           </View>
         ) : (
           <View style={styles.submitRow}>
-            <Text style={styles.submitText}>AMBIL DETAIL NOVEL</Text>
+            <Text style={styles.submitText}>FETCH NOVEL DETAILS</Text>
             <Feather name="arrow-right" size={16} color="#121212" />
           </View>
         )}

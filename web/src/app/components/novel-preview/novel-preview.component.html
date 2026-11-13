@@ -1,64 +1,60 @@
-<section class="neo-card bg-white p-4 sm:p-5 mb-5 border-[2px] border-black shadow-[4px_4px_0px_#000]">
-  <!-- Novel Header Info (Clean & Simple, No Nested Box) -->
+<section class="neo-card bg-white p-4 sm:p-5 mb-5 border-[2.5px] border-black shadow-[4px_4px_0px_#000]">
+  <!-- Novel Header Info -->
   <div class="pb-3.5 mb-4 border-b-2 border-black/10">
     <div class="flex items-center justify-between gap-2 mb-2">
       <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2.5 py-0.5 border border-black font-mono">
-        NOVEL TERPILIH
+        SELECTED NOVEL
       </span>
       <span class="text-[10px] font-mono font-bold text-gray-500">
-        {{ novel.totalEpisodes }} Bab
+        {{ novel.totalEpisodes }} Chapters
       </span>
     </div>
 
-    <!-- Full English Title (No abbreviation / no truncation) -->
+    <!-- Full English Title -->
     <h3 class="font-black text-sm sm:text-base leading-snug text-[#1A1A1A]">
       {{ (targetLang === 'id' && novel.titleId) ? novel.titleId : (novel.titleEn || novel.titleJa) }}
     </h3>
 
-    <!-- Compact Meta Line (No bulky pills) -->
+    <!-- Compact Meta Line -->
     <p class="text-[11px] font-mono text-gray-600 font-bold mt-1.5">
       {{ (targetLang === 'id' && novel.authorId) ? novel.authorId : (novel.authorEn || novel.authorJa) }} &bull; ID: {{ novel.workId }}
     </p>
   </div>
 
-  <!-- Chapter Selection Options -->
-  <div class="mb-5 sm:mb-6">
-    <div class="flex items-center justify-between mb-3">
+  <!-- Bento Section 1: Chapter Selection -->
+  <div class="mb-4 sm:mb-5">
+    <div class="flex items-center justify-between mb-2.5">
       <label class="block font-black text-xs uppercase tracking-wide text-[#55423C]">
-        Pilih Bab
+        Select Chapters
       </label>
-      <span class="text-[10px] font-mono text-gray-400 font-bold">1 file EPUB</span>
+      <span class="text-[10px] font-mono text-gray-400 font-bold">1 EPUB file</span>
     </div>
 
-    <div class="space-y-3">
-      <!-- Option 1: Current Episode -->
+    <!-- 3 Cards Grid: Balanced & Roomy -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+      <!-- Option 1: Current Episode (if available) -->
       @if (novel.currentEpisodeIndex) {
         <div
           role="button"
           tabindex="0"
           (click)="setRangeType('current')"
           [class.neo-card-active]="rangeType === 'current'"
-          class="neo-card-sm p-3 sm:p-3.5 cursor-pointer transition-all border-2 border-black"
+          class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
         >
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center space-x-2.5 min-w-0">
-              <app-icon name="bookmark" [size]="16" class="text-black flex-shrink-0" />
-              <div class="min-w-0">
-                <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
-                  Hanya Bab Saat Ini
-                </p>
-                <p class="text-[10px] text-gray-500 font-mono mt-0.5">
-                  Bab #{{ novel.currentEpisodeIndex }} sesuai URL
-                </p>
-              </div>
+          <div class="flex items-start justify-between gap-1.5 mb-1.5">
+            <div class="flex items-center space-x-2 min-w-0">
+              <app-icon name="bookmark" [size]="15" class="text-black flex-shrink-0" />
+              <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
+                Current Chapter
+              </p>
             </div>
-
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono">
-                Bab #{{ novel.currentEpisodeIndex }}
-              </span>
-            </div>
+            <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
+              #{{ novel.currentEpisodeIndex }}
+            </span>
           </div>
+          <p class="text-[10px] font-mono font-bold text-gray-500 leading-tight">
+            Episode from URL
+          </p>
         </div>
       }
 
@@ -68,201 +64,201 @@
         tabindex="0"
         (click)="setRangeType('range')"
         [class.neo-card-active]="rangeType === 'range'"
-        class="neo-card-sm p-3 sm:p-3.5 cursor-pointer transition-all border-2 border-black"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
       >
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center space-x-2.5 min-w-0">
-            <app-icon name="sliders" [size]="16" class="text-black flex-shrink-0" />
-            <div class="min-w-0">
-              <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
-                Rentang Bab (Custom)
-              </p>
-              <p class="text-[10px] text-gray-500 font-mono mt-0.5">
-                Misal: 1-5 atau 1,2,3
-              </p>
-            </div>
+        <div class="flex items-start justify-between gap-1.5 mb-1.5">
+          <div class="flex items-center space-x-2 min-w-0">
+            <app-icon name="sliders" [size]="15" class="text-black flex-shrink-0" />
+            <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
+              Custom Range
+            </p>
           </div>
-
-          <div class="flex items-center gap-1.5 flex-shrink-0">
-            <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono">
-              Custom
-            </span>
-          </div>
+          <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
+            CUSTOM
+          </span>
         </div>
-
-        @if (rangeType === 'range') {
-          <div class="mt-3 pt-2.5 border-t-2 border-black flex items-center gap-2.5" (click)="$event.stopPropagation()">
-            <input
-              type="text"
-              [(ngModel)]="customRange"
-              placeholder="Contoh: 1-5 atau 1,2,3"
-              class="neo-input flex-1 p-2 text-xs font-mono font-bold"
-            />
-            <span class="neo-badge bg-white text-black text-[9px] px-2 py-1 flex-shrink-0 border border-black">
-              Maks: {{ novel.totalEpisodes }}
-            </span>
-          </div>
-        }
+        <p class="text-[10px] font-mono font-bold text-gray-500 leading-tight">
+          e.g. 1-5 or 1,2,3
+        </p>
       </div>
 
-      <!-- Option 3: Mode Sampe Tamat (All chapters into 1 EPUB) -->
+      <!-- Option 3: All Chapters -->
       <div
         role="button"
         tabindex="0"
         (click)="setRangeType('all')"
         [class.neo-card-active]="rangeType === 'all'"
-        class="neo-card-sm p-3 sm:p-3.5 cursor-pointer transition-all border-2 border-black"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
       >
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center space-x-2.5 min-w-0">
-            <app-icon name="flame" [size]="16" class="text-black flex-shrink-0" />
-            <div class="min-w-0">
-              <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
-                Mode Sampe Tamat
-              </p>
-              <p class="text-[10px] text-[#55423C] font-mono leading-tight mt-0.5">
-                Kompilasi semua {{ novel.totalEpisodes }} bab
-              </p>
+        <div class="flex items-start justify-between gap-1.5 mb-1.5">
+          <div class="flex items-center space-x-2 min-w-0">
+            <app-icon name="flame" [size]="15" class="text-black flex-shrink-0" />
+            <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
+              All Chapters
+            </p>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="neo-badge bg-[#E78FB3] text-black text-[9px] px-1.5 py-0.5 border border-black font-bold">
+              ALL
+            </span>
+          </div>
+        </div>
+        <p class="text-[10px] font-mono font-bold text-gray-500 leading-tight">
+          1-{{ novel.totalEpisodes }} (Complete)
+        </p>
+      </div>
+    </div>
+
+    <!-- Dedicated Custom Range Input Bar (Clean & Roomy, never cramps the cards) -->
+    @if (rangeType === 'range') {
+      <div class="mt-2.5 p-2.5 bg-[#FBFAF6] border-2 border-black rounded-xl flex items-center gap-2 shadow-[2px_2px_0px_#000] animate-fadeIn">
+        <label for="customRangeInput" class="text-xs font-mono font-bold text-[#55423C] flex-shrink-0">
+          Range:
+        </label>
+        <input
+          id="customRangeInput"
+          type="text"
+          [(ngModel)]="customRange"
+          placeholder="e.g. 1-5 or 1,2,3"
+          class="neo-input flex-1 p-2 bg-white text-xs font-mono font-black"
+        />
+        <span class="neo-badge bg-black text-white text-[10px] px-2.5 py-1.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
+          Max: {{ novel.totalEpisodes }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Bento Section 2: Model & Format Grid (Side-by-Side on Desktop) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
+    
+    <!-- Left: Target Language (AI Model) -->
+    <div>
+      <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
+        Translation Language (AI Model)
+      </label>
+      <div class="grid grid-cols-3 gap-2">
+        <!-- Option 1: EN (Fast Sugoi) -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setTargetLang('en')"
+          [class.neo-card-active]="targetLang === 'en'"
+          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]"
+        >
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="font-black text-xs sm:text-sm text-[#1A1A1A] leading-tight">
+              EN
+            </span>
+            <div
+              class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
+              [class.bg-black]="targetLang === 'en'"
+              [class.bg-white]="targetLang !== 'en'"
+            >
+              @if (targetLang === 'en') {
+                <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
+              }
             </div>
           </div>
+          <p class="text-[9.5px] font-mono font-bold text-gray-500">
+            Sugoi V4
+          </p>
+        </div>
 
-          <div class="flex items-center gap-1.5 flex-shrink-0">
-            <span class="neo-badge bg-[#E78FB3] text-black text-[9px] px-1.5 py-0.5 border border-black font-bold">
-              SEMUA
+        <!-- Option 2: EN++ (Sugoi + AI Polish) -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setTargetLang('en_polished')"
+          [class.neo-card-active]="targetLang === 'en_polished'"
+          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]"
+        >
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="font-black text-xs sm:text-sm text-[#1A1A1A] leading-tight">
+              EN++
             </span>
-            <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold">
-              1-{{ novel.totalEpisodes }}
+            <div
+              class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
+              [class.bg-black]="targetLang === 'en_polished'"
+              [class.bg-white]="targetLang !== 'en_polished'"
+            >
+              @if (targetLang === 'en_polished') {
+                <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
+              }
+            </div>
+          </div>
+          <p class="text-[9.5px] font-mono font-bold text-gray-500">
+            Sugoi + AI
+          </p>
+        </div>
+
+        <!-- Option 3: ID (SeaLLM 1.5B Indonesian) -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setTargetLang('id')"
+          [class.neo-card-active]="targetLang === 'id'"
+          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]"
+        >
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="font-black text-xs sm:text-sm text-[#1A1A1A] leading-tight">
+              ID
             </span>
+            <div
+              class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
+              [class.bg-black]="targetLang === 'id'"
+              [class.bg-white]="targetLang !== 'id'"
+            >
+              @if (targetLang === 'id') {
+                <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
+              }
+            </div>
           </div>
+          <p class="text-[9.5px] font-mono font-bold text-gray-500">
+            SeaLLM 1.5B
+          </p>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Target Language Selector -->
-  <div class="mb-5 sm:mb-6">
-    <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
-      Bahasa Terjemahan (Model AI)
-    </label>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-      <!-- English Option (Fast & Standard) -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setTargetLang('en')"
-        [class.neo-card-active]="targetLang === 'en'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
-      >
-        <div class="flex items-center justify-between gap-1 mb-1">
-          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            EN (FAST)
-          </span>
-          <div
-            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
-            [class.bg-black]="targetLang === 'en'"
-            [class.bg-white]="targetLang !== 'en'"
-          >
-            @if (targetLang === 'en') {
-              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
-            }
-          </div>
+    <!-- Right: EPUB Text Format -->
+    <div>
+      <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
+        EPUB Text Format
+      </label>
+      <div class="grid grid-cols-2 gap-2.5">
+        <!-- Clean Translated -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setMode('translated')"
+          [class.neo-card-active]="mode === 'translated'"
+          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
+        >
+          <p class="font-black text-xs text-[#1A1A1A]">100% Clean</p>
+          <p class="text-[9px] font-mono font-bold text-gray-500 mt-1">No Japanese Text</p>
         </div>
-        <p class="text-[9px] font-mono font-bold text-gray-500">
-          Sugoi V4 (~3 dtk/bab)
-        </p>
-      </div>
 
-      <!-- English Polished Option (Hybrid Sugoi + AI Proofreader) -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setTargetLang('en_polished')"
-        [class.neo-card-active]="targetLang === 'en_polished'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
-      >
-        <div class="flex items-center justify-between gap-1 mb-1">
-          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            EN (POLISHED)
-          </span>
-          <div
-            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
-            [class.bg-black]="targetLang === 'en_polished'"
-            [class.bg-white]="targetLang !== 'en_polished'"
-          >
-            @if (targetLang === 'en_polished') {
-              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
-            }
-          </div>
+        <!-- Bilingual -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setMode('bilingual')"
+          [class.neo-card-active]="mode === 'bilingual'"
+          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
+        >
+          <p class="font-black text-xs text-[#1A1A1A]">Bilingual</p>
+          <p class="text-[9px] font-mono font-bold text-gray-500 mt-1">JP + Translation</p>
         </div>
-        <p class="text-[9px] font-mono font-bold text-gray-500">
-          Sugoi + AI Editor
-        </p>
-      </div>
-
-      <!-- Indonesia Option -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setTargetLang('id')"
-        [class.neo-card-active]="targetLang === 'id'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between"
-      >
-        <div class="flex items-center justify-between gap-1 mb-1">
-          <span class="font-black text-xs text-[#1A1A1A] tracking-tight">
-            INDONESIA
-          </span>
-          <div
-            class="w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center flex-shrink-0"
-            [class.bg-black]="targetLang === 'id'"
-            [class.bg-white]="targetLang !== 'id'"
-          >
-            @if (targetLang === 'id') {
-              <div class="w-1 h-1 bg-[#D7FF28] rounded-full"></div>
-            }
-          </div>
-        </div>
-        <p class="text-[9px] font-mono font-bold text-gray-500">
-          SeaLLM 1.5B (Sastra)
-        </p>
       </div>
     </div>
+
   </div>
 
-  <!-- Layout Format Selector -->
-  <div class="mb-5 sm:mb-6">
-    <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
-      Tampilan Teks EPUB
-    </label>
-    <div class="grid grid-cols-2 gap-3 sm:gap-3.5">
-      <!-- Clean Translated -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setMode('translated')"
-        [class.neo-card-active]="mode === 'translated'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black text-center"
-      >
-        <p class="font-black text-xs text-[#1A1A1A]">100% Bersih</p>
-        <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">Tanpa Teks Jepang</p>
-      </div>
-
-      <!-- Bilingual -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setMode('bilingual')"
-        [class.neo-card-active]="mode === 'bilingual'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black text-center"
-      >
-        <p class="font-black text-xs text-[#1A1A1A]">Bilingual</p>
-        <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">JP + Terjemahan</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Force Re-translate Checkbox -->
-  <div class="mb-5 sm:mb-6 pt-1">
-    <label class="flex items-center gap-3 cursor-pointer select-none group">
+  <!-- Bento Bottom Bar: Checkbox + Action CTA -->
+  <div class="pt-3.5 border-t-2 border-black/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <!-- Force Re-translate Checkbox -->
+    <label class="flex items-center gap-2.5 cursor-pointer select-none group">
       <div class="relative flex-shrink-0">
         <input
           type="checkbox"
@@ -279,29 +275,29 @@
       </div>
       <div class="leading-tight">
         <p class="font-black text-xs text-[#1A1A1A] group-hover:text-black transition-colors">
-          Paksa Terjemahkan Ulang (Abaikan Cache)
+          Force Re-translate (Bypass Cache)
         </p>
-        <p class="text-[9px] font-mono text-gray-500 font-bold mt-0.5">
-          AI akan memproses bab dari awal meski sudah ada riwayat terjemahan
+        <p class="text-[9px] font-mono text-gray-500 font-bold">
+          Re-processes chapters from scratch even if already cached
         </p>
       </div>
     </label>
-  </div>
 
-  <!-- CTA Generate Button -->
-  <button
-    type="button"
-    (click)="onGenerate()"
-    [disabled]="isGenerating"
-    class="neo-btn w-full p-4 bg-[#D7FF28] text-black font-black text-sm uppercase tracking-wider hover:bg-[#cbf71e] flex items-center justify-center gap-2.5 border-[2px] border-black shadow-[3px_3px_0px_#000]"
-  >
-    @if (isGenerating) {
-      <span class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-      <span>MEMULAI GENERATOR...</span>
-    } @else {
-      <app-icon name="download" [size]="18" />
-      <span>GENERATE EPUB SEKARANG</span>
-      <app-icon name="arrow-right" [size]="16" />
-    }
-  </button>
+    <!-- CTA Generate Button -->
+    <button
+      type="button"
+      (click)="onGenerate()"
+      [disabled]="isGenerating"
+      class="neo-btn w-full sm:w-auto sm:min-w-[240px] p-3 sm:p-3.5 bg-[#D7FF28] text-black font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-[#cbf71e] flex items-center justify-center gap-2 border-[2px] border-black shadow-[3px_3px_0px_#000] active:translate-x-[1px] active:translate-y-[1px]"
+    >
+      @if (isGenerating) {
+        <span class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+        <span>STARTING GENERATOR...</span>
+      } @else {
+        <app-icon name="download" [size]="16" />
+        <span>GENERATE EPUB NOW</span>
+        <app-icon name="arrow-right" [size]="14" />
+      }
+    </button>
+  </div>
 </section>

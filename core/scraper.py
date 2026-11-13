@@ -103,7 +103,7 @@ class KakuyomuScraper:
         seen_ids = set()
 
         # Approach A: Parse Next.js Apollo state (__NEXT_DATA__)
-        # Essential for novels with accordions / pagination (> 7 episodes)
+        # Essential for novels with volumes / accordions / pagination (> 7 episodes)
         next_data_el = soup.find("script", id="__NEXT_DATA__")
         if next_data_el and next_data_el.string:
             try:
@@ -111,13 +111,38 @@ class KakuyomuScraper:
                 nd = json.loads(next_data_el.string)
                 apollo = nd.get("props", {}).get("pageProps", {}).get("__APOLLO_STATE__", {})
 
-                for k, v in apollo.items():
-                    if isinstance(v, dict) and "episodeUnions" in v:
-                        for item in v["episodeUnions"]:
-                            ref = item.get("__ref")
-                            if ref and ref in apollo:
-                                ep = apollo[ref]
-                                if ep.get("__typename") == "Episode":
+                # Priority 1: Traverse Work.tableOfContentsV2 in volume order
+                work_node = apollo.get(f"Work:{self.work_id}") or apollo.get(self.work_id)
+                toc_v2 = work_node.get("tableOfContentsV2") if isinstance(work_node, dict) else None
+
+                if toc_v2 and isinstance(toc_v2, list):
+                    for toc_item in toc_v2:
+                        ref = toc_item.get("__ref")
+                        toc_chap = apollo.get(ref) if ref else toc_item
+                        if isinstance(toc_chap, dict) and "episodeUnions" in toc_chap:
+                            for item in toc_chap["episodeUnions"]:
+                                ep_ref = item.get("__ref")
+                                ep = apollo.get(ep_ref) if ep_ref else item
+                                if isinstance(ep, dict) and ep.get("__typename") == "Episode":
+                                    ep_id = str(ep.get("id"))
+                                    if ep_id not in seen_ids:
+                                        seen_ids.add(ep_id)
+                                        episodes.append({
+                                            "index": len(episodes) + 1,
+                                            "id": ep_id,
+                                            "title": ep.get("title") or f"Chapter {len(episodes) + 1}",
+                                            "url": f"https://kakuyomu.jp/works/{self.work_id}/episodes/{ep_id}",
+                                            "date": ep.get("publishedAt", "")
+                                        })
+
+                # Priority 2: Fallback scan across all Apollo state objects
+                if not episodes:
+                    for k, v in apollo.items():
+                        if isinstance(v, dict) and "episodeUnions" in v:
+                            for item in v["episodeUnions"]:
+                                ref = item.get("__ref")
+                                ep = apollo.get(ref) if ref else item
+                                if isinstance(ep, dict) and ep.get("__typename") == "Episode":
                                     ep_id = str(ep.get("id"))
                                     if ep_id not in seen_ids:
                                         seen_ids.add(ep_id)

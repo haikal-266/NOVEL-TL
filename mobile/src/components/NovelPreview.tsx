@@ -53,10 +53,10 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
       <View style={styles.novelHeader}>
         <View style={styles.metaRow}>
           <View style={styles.badgeLime}>
-            <Text style={styles.badgeLimeText}>NOVEL TERPILIH</Text>
+            <Text style={styles.badgeLimeText}>SELECTED NOVEL</Text>
           </View>
           <View style={styles.badgeWhite}>
-            <Text style={styles.totalEpisodesText}>{novel.totalEpisodes} Bab</Text>
+            <Text style={styles.totalEpisodesText}>{novel.totalEpisodes} Chapters</Text>
           </View>
         </View>
 
@@ -74,8 +74,8 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
       {/* Chapter Selection */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>PILIH BAB</Text>
-          <Text style={styles.sectionSub}>1 file EPUB</Text>
+          <Text style={styles.sectionTitle}>SELECT CHAPTERS</Text>
+          <Text style={styles.sectionSub}>1 EPUB file</Text>
         </View>
 
         {/* Option 1: Current Episode */}
@@ -91,14 +91,14 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             <View style={styles.optionLeft}>
               <Feather name="bookmark" size={15} color="#121212" />
               <View>
-                <Text style={styles.optionTitle}>Hanya Bab Saat Ini</Text>
+                <Text style={styles.optionTitle}>Current Chapter Only</Text>
                 <Text style={styles.optionDesc}>
-                  Bab #{novel.currentEpisodeIndex} sesuai URL
+                  Chapter #{novel.currentEpisodeIndex} from URL
                 </Text>
               </View>
             </View>
             <View style={styles.pillBlack}>
-              <Text style={styles.pillBlackText}>BAB #{novel.currentEpisodeIndex}</Text>
+              <Text style={styles.pillBlackText}>CH #{novel.currentEpisodeIndex}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -115,8 +115,8 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           <View style={styles.optionLeft}>
             <Feather name="sliders" size={15} color="#121212" />
             <View>
-              <Text style={styles.optionTitle}>Rentang Bab (Custom)</Text>
-              <Text style={styles.optionDesc}>Misal: 1-5 atau 1,2,3</Text>
+              <Text style={styles.optionTitle}>Custom Chapter Range</Text>
+              <Text style={styles.optionDesc}>e.g. 1-5 or 1,2,3</Text>
             </View>
           </View>
           <View style={styles.pillBlack}>
@@ -127,7 +127,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         {/* Custom Range Input Field */}
         {rangeType === 'range' && (
           <View style={styles.customInputBox}>
-            <Text style={styles.customInputLabel}>Masukkan Nomor Bab (contoh: 1-5 atau 1,2,3):</Text>
+            <Text style={styles.customInputLabel}>Enter Chapter Range (e.g. 1-5 or 1,2,3):</Text>
             <TextInput
               style={styles.customInput}
               value={customRange}
@@ -151,13 +151,13 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           <View style={styles.optionLeft}>
             <Ionicons name="flame" size={16} color="#121212" />
             <View>
-              <Text style={styles.optionTitle}>Mode Sampe Tamat</Text>
-              <Text style={styles.optionDesc}>Kompilasi semua {novel.totalEpisodes} bab</Text>
+              <Text style={styles.optionTitle}>All Chapters (Complete)</Text>
+              <Text style={styles.optionDesc}>Compile all {novel.totalEpisodes} chapters</Text>
             </View>
           </View>
           <View style={styles.allPillRow}>
             <View style={styles.pillPink}>
-              <Text style={styles.pillPinkText}>SEMUA</Text>
+              <Text style={styles.pillPinkText}>ALL</Text>
             </View>
             <View style={styles.pillBlack}>
               <Text style={styles.pillBlackText}>1-{novel.totalEpisodes}</Text>
@@ -168,7 +168,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
 
       {/* Target Language Selection */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>BAHASA TERJEMAHAN (MODEL AI)</Text>
+        <Text style={styles.sectionTitle}>TRANSLATION LANGUAGE (AI MODEL)</Text>
         <View style={styles.grid2}>
           {/* English Fast */}
           <TouchableOpacity
@@ -180,7 +180,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <View style={styles.gridCardHeader}>
-              <Text style={styles.gridCardTitle}>EN (FAST)</Text>
+              <Text style={styles.gridCardTitle}>EN</Text>
               <View
                 style={[
                   styles.radioDot,
@@ -201,7 +201,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <View style={styles.gridCardHeader}>
-              <Text style={styles.gridCardTitle}>EN (POLISH)</Text>
+              <Text style={styles.gridCardTitle}>EN++</Text>
               <View
                 style={[
                   styles.radioDot,
@@ -222,7 +222,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <View style={styles.gridCardHeader}>
-              <Text style={styles.gridCardTitle}>INDONESIA</Text>
+              <Text style={styles.gridCardTitle}>ID</Text>
               <View
                 style={[
                   styles.radioDot,
@@ -237,7 +237,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
 
       {/* Layout Format Selection */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TAMPILAN TEKS EPUB</Text>
+        <Text style={styles.sectionTitle}>EPUB TEXT FORMAT</Text>
         <View style={styles.grid2}>
           <TouchableOpacity
             style={[
@@ -247,8 +247,8 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             onPress={() => setMode('translated')}
             activeOpacity={0.8}
           >
-            <Text style={styles.gridCardTitle}>100% Bersih</Text>
-            <Text style={styles.gridCardSub}>Tanpa Teks Jepang</Text>
+            <Text style={styles.gridCardTitle}>100% Clean</Text>
+            <Text style={styles.gridCardSub}>No Japanese Text</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -260,7 +260,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             activeOpacity={0.8}
           >
             <Text style={styles.gridCardTitle}>Bilingual</Text>
-            <Text style={styles.gridCardSub}>Paragraf JP + TL</Text>
+            <Text style={styles.gridCardSub}>JP + Translation</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -275,9 +275,9 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           {forceTranslate && <Feather name="check" size={13} color="#121212" />}
         </View>
         <View style={styles.checkboxTextCol}>
-          <Text style={styles.checkboxTitle}>Paksa Terjemahkan Ulang (Abaikan Cache)</Text>
+          <Text style={styles.checkboxTitle}>Force Re-translate (Bypass Cache)</Text>
           <Text style={styles.checkboxSubtitle}>
-            AI akan memproses bab dari awal meski ada riwayat
+            Re-processes chapters from scratch even if already cached
           </Text>
         </View>
       </TouchableOpacity>
@@ -290,7 +290,7 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
         activeOpacity={0.8}
       >
         <Feather name="download" size={18} color="#121212" />
-        <Text style={styles.generateBtnText}>GENERATE EPUB SEKARANG</Text>
+        <Text style={styles.generateBtnText}>GENERATE EPUB NOW</Text>
         <Feather name="arrow-right" size={16} color="#121212" />
       </TouchableOpacity>
     </View>

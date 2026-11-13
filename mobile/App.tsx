@@ -108,7 +108,7 @@ function MainScreen() {
       setNovel(data);
       setServerConnected(true);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal mengambil detail novel.');
+      setErrorMessage(err.message || 'Failed to fetch novel details.');
       setServerConnected(false);
     } finally {
       setIsInspecting(false);
@@ -126,7 +126,7 @@ function MainScreen() {
       setJob(initialJob);
       startPolling(initialJob.jobId);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal memulai translasi.');
+      setErrorMessage(err.message || 'Failed to start translation job.');
       setIsGenerating(false);
     }
   };
@@ -137,7 +137,7 @@ function MainScreen() {
       const updated = await cancelJob(job.jobId);
       setJob(updated);
     } catch (err: any) {
-      Alert.alert('Gagal Membatalkan', err.message || 'Terjadi kesalahan.');
+      Alert.alert('Failed to Cancel', err.message || 'An error occurred.');
     }
   };
 

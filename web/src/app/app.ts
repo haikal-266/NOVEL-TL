@@ -52,7 +52,7 @@ export class App implements OnDestroy {
         this.isInspecting.set(false);
       },
       error: (err: { error?: { detail?: string }; message?: string }) => {
-        const detail = err.error?.detail || err.message || 'Gagal mengambil detail novel.';
+        const detail = err.error?.detail || err.message || 'Failed to fetch novel details.';
         this.errorMessage.set(detail);
         this.isInspecting.set(false);
       }
@@ -69,7 +69,7 @@ export class App implements OnDestroy {
         this.startPolling(initialJob.jobId);
       },
       error: (err: { error?: { detail?: string }; message?: string }) => {
-        const detail = err.error?.detail || err.message || 'Gagal memulai proses translasi.';
+        const detail = err.error?.detail || err.message || 'Failed to start translation job.';
         this.errorMessage.set(detail);
         this.isGenerating.set(false);
       }
