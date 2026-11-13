@@ -55,6 +55,11 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
           <View style={styles.badgeLime}>
             <Text style={styles.badgeLimeText}>SELECTED NOVEL</Text>
           </View>
+          <View style={[styles.badgeWhite, { backgroundColor: novel.source === 'syosetu' ? '#E78FB3' : '#FFC0AD' }]}>
+            <Text style={[styles.totalEpisodesText, { color: '#121212', fontWeight: '900' }]}>
+              {novel.source === 'syosetu' ? 'SYOSETU' : 'KAKUYOMU'}
+            </Text>
+          </View>
           <View style={styles.badgeWhite}>
             <Text style={styles.totalEpisodesText}>{novel.totalEpisodes} Chapters</Text>
           </View>

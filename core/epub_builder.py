@@ -250,6 +250,8 @@ class EPUBBuilder:
         if self.mode == "bilingual":
             mode_desc = "Bilingual Edition (Japanese & English)"
 
+        source_name = "Syosetu (Shousetsuka ni Narou)" if ("syosetu.com" in url or self.novel_info.get("source") == "syosetu") else "Kakuyomu Original"
+
         html_content = f"""<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
@@ -263,7 +265,7 @@ class EPUBBuilder:
         <div class="novel-meta">
             <p><strong>Author:</strong> {html.escape(author)}</p>
             <p><strong>Edition:</strong> {mode_desc}</p>
-            <p><strong>Source:</strong> <a href="{html.escape(url)}">Kakuyomu Original</a></p>
+            <p><strong>Source:</strong> <a href="{html.escape(url)}">{source_name}</a></p>
         </div>
     </div>
 </body>

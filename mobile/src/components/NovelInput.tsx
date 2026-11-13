@@ -17,9 +17,6 @@ interface NovelInputProps {
   isLoading: boolean;
 }
 
-const DEFAULT_EXAMPLE_URL =
-  'https://kakuyomu.jp/works/2912051607243271731/episodes/2912051607330854893';
-
 export const NovelInput: React.FC<NovelInputProps> = ({
   url,
   onChangeUrl,
@@ -35,7 +32,7 @@ export const NovelInput: React.FC<NovelInputProps> = ({
             <Ionicons name="flash" size={10} color="#121212" />
             <Text style={styles.stepBadgeText}>STEP 1</Text>
           </View>
-          <Text style={styles.titleText}>KAKUYOMU NOVEL URL</Text>
+          <Text style={styles.titleText}>NOVEL URL</Text>
         </View>
 
         {url.length > 0 && (
@@ -51,7 +48,7 @@ export const NovelInput: React.FC<NovelInputProps> = ({
       </View>
 
       <Text style={styles.subtitle}>
-        Paste Kakuyomu novel series URL or single chapter link.
+        Kakuyomu (kakuyomu.jp) or Syosetu (ncode.syosetu.com) link.
       </Text>
 
       {/* Input Box */}
@@ -61,27 +58,13 @@ export const NovelInput: React.FC<NovelInputProps> = ({
           style={styles.input}
           value={url}
           onChangeText={onChangeUrl}
-          placeholder="https://kakuyomu.jp/works/..."
+          placeholder="https://kakuyomu.jp/... or syosetu.com/..."
           placeholderTextColor="#9CA3AF"
           autoCapitalize="none"
           autoCorrect={false}
           editable={!isLoading}
         />
       </View>
-
-      {/* Example Button */}
-      <TouchableOpacity
-        style={styles.exampleBtn}
-        onPress={() => onChangeUrl(DEFAULT_EXAMPLE_URL)}
-        disabled={isLoading}
-        activeOpacity={0.8}
-      >
-        <View style={styles.exampleLeft}>
-          <Ionicons name="sparkles" size={12} color="#121212" />
-          <Text style={styles.exampleText}>USE EXAMPLE ROMCOM</Text>
-        </View>
-        <Text style={styles.exampleDomain}>kakuyomu.jp</Text>
-      </TouchableOpacity>
 
       {/* Submit Button */}
       <TouchableOpacity
@@ -192,17 +175,26 @@ const styles = StyleSheet.create({
     color: THEME.colors.black,
     paddingVertical: 0,
   },
+  examplesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
   exampleBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: THEME.colors.peach,
     borderWidth: THEME.border.thin,
     borderColor: '#121212',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 7,
     borderRadius: 8,
-    marginBottom: 12,
+  },
+  exampleBtnLime: {
+    backgroundColor: THEME.colors.lime,
   },
   exampleLeft: {
     flexDirection: 'row',

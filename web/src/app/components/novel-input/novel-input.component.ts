@@ -15,13 +15,6 @@ export class NovelInputComponent {
 
   url = '';
 
-  readonly defaultExampleUrl =
-    'https://kakuyomu.jp/works/2912051607243271731/episodes/2912051607330854893';
-
-  setExample(): void {
-    this.url = this.defaultExampleUrl;
-  }
-
   onSubmit(): void {
     const trimmed = this.url.trim();
     if (trimmed && !this.isLoading) {

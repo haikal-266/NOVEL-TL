@@ -18,6 +18,10 @@ from pydantic import BaseModel, Field
 from core import (
     KakuyomuScraper,
     parse_kakuyomu_url,
+    SyosetuScraper,
+    parse_syosetu_url,
+    parse_novel_url,
+    get_novel_scraper,
     CacheManager,
     SugoiTranslator,
     EPUBBuilder,
@@ -48,6 +52,7 @@ class EpisodeItem(BaseModel):
 
 class NovelInspectResponse(BaseModel):
     workId: str
+    source: str = "kakuyomu"
     currentEpisodeId: Optional[str] = None
     currentEpisodeIndex: Optional[int] = None
     titleJa: str
@@ -160,16 +165,16 @@ def health() -> Dict[str, str]:
 @app.post("/api/novel/inspect", response_model=NovelInspectResponse)
 def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
     try:
-        work_id, episode_id = parse_kakuyomu_url(req.url)
+        source, work_id, episode_id = parse_novel_url(req.url)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid Kakuyomu URL: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid Novel URL: {str(e)}")
 
     cache = CacheManager(work_id)
     cached = cache.load_novel_info()
     
-    # Always fetch fresh TOC & metadata from Kakuyomu so new chapters are instantly detected
+    # Always fetch fresh TOC & metadata from source so new chapters are instantly detected
     try:
-        scraper = KakuyomuScraper(work_id)
+        scraper = get_novel_scraper(req.url)
         fresh_info = scraper.get_novel_info()
         # Preserve existing translated titles/authors from cache
         if cached:
@@ -183,7 +188,7 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
         if cached and cached.get("total_episodes"):
             novel_info = cached
         else:
-            raise HTTPException(status_code=502, detail=f"Failed to fetch novel from Kakuyomu: {scrape_err}")
+            raise HTTPException(status_code=502, detail=f"Failed to fetch novel from {source.title()}: {scrape_err}")
 
     # Immediately translate novel title and author to English if not yet translated
     if not novel_info.get("title_en"):
@@ -224,6 +229,7 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
 
     return NovelInspectResponse(
         workId=work_id,
+        source=novel_info.get("source", source),
         currentEpisodeId=episode_id,
         currentEpisodeIndex=curr_idx,
         titleJa=novel_info.get("title", ""),
@@ -245,9 +251,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
     try:
         job.status = "running"
         job.message = "Parsing URL and loading novel metadata..."
-        work_id, episode_id = parse_kakuyomu_url(req.url)
+        source, work_id, episode_id = parse_novel_url(req.url)
         cache = CacheManager(work_id)
-        scraper = KakuyomuScraper(work_id)
+        scraper = get_novel_scraper(req.url)
 
         novel_info = cache.load_novel_info()
         if not novel_info or not novel_info.get("total_episodes"):

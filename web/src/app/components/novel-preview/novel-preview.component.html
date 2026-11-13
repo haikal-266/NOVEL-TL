@@ -2,9 +2,18 @@
   <!-- Novel Header Info -->
   <div class="pb-3.5 mb-4 border-b-2 border-black/10">
     <div class="flex items-center justify-between gap-2 mb-2">
-      <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2.5 py-0.5 border border-black font-mono">
-        SELECTED NOVEL
-      </span>
+      <div class="flex items-center gap-1.5">
+        <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2.5 py-0.5 border border-black font-mono">
+          SELECTED NOVEL
+        </span>
+        <span
+          class="neo-badge text-[9px] px-2 py-0.5 font-mono border border-black font-bold"
+          [class.bg-[#FFC0AD]]="novel.source !== 'syosetu'"
+          [class.bg-[#E78FB3]]="novel.source === 'syosetu'"
+        >
+          {{ novel.source === 'syosetu' ? 'SYOSETU' : 'KAKUYOMU' }}
+        </span>
+      </div>
       <span class="text-[10px] font-mono font-bold text-gray-500">
         {{ novel.totalEpisodes }} Chapters
       </span>

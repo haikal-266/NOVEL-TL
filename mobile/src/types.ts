@@ -7,6 +7,7 @@ export interface EpisodeItem {
 
 export interface NovelInspectResponse {
   workId: string;
+  source?: string;
   currentEpisodeId: string | null;
   currentEpisodeIndex: number | null;
   titleJa: string;

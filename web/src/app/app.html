@@ -1,36 +1,31 @@
 <main class="min-h-screen py-4 sm:py-6 px-3 sm:px-6 flex flex-col items-center justify-start max-w-7xl mx-auto w-full">
   <!-- Error Banner (Full Width on Top) -->
   @if (errorMessage()) {
-    <div
-      class="w-full max-w-md lg:max-w-none mb-4 neo-card bg-[#E78FB3] border-[2px] border-black p-3 text-xs font-bold text-black flex items-center justify-between shadow-[2px_2px_0px_#000]">
-      <div class="flex items-center space-x-2">
-        <app-icon name="alert" [size]="16" class="text-black" />
-        <span>{{ errorMessage() }}</span>
-      </div>
-      <button
-        type="button"
-        (click)="clearError()"
-        class="font-black text-sm px-2 py-0.5 hover:bg-black hover:text-white border-2 border-black rounded-lg ml-2 transition-colors">
-        &times;
-      </button>
+  <div
+    class="w-full max-w-md lg:max-w-none mb-4 neo-card bg-[#E78FB3] border-[2px] border-black p-3 text-xs font-bold text-black flex items-center justify-between shadow-[2px_2px_0px_#000]">
+    <div class="flex items-center space-x-2">
+      <app-icon name="alert" [size]="16" class="text-black" />
+      <span>{{ errorMessage() }}</span>
     </div>
+    <button type="button" (click)="clearError()"
+      class="font-black text-sm px-2 py-0.5 hover:bg-black hover:text-white border-2 border-black rounded-lg ml-2 transition-colors">
+      &times;
+    </button>
+  </div>
   }
 
   <!-- Bento Box Layout Grid -->
   <!-- Mobile / Tablet (< lg): Centered clean column (max-w-xl mx-auto) -->
   <!-- Desktop (lg:): 2-Column Bento Grid (cols-12: Left 5 cols, Right 7 cols) -->
   <div class="w-full max-w-xl lg:max-w-none mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
-    
+
     <!-- Left Column: Branding Hero & Novel URL Input Card -->
     <div class="lg:col-span-5 space-y-4">
       <!-- Header -->
       <app-header />
 
       <!-- Novel URL Input Form (Step 1) -->
-      <app-novel-input
-        [isLoading]="isInspecting()"
-        (inspect)="onInspect($event)"
-      />
+      <app-novel-input [isLoading]="isInspecting()" (inspect)="onInspect($event)" />
 
       <!-- Desktop Footer -->
       <footer class="hidden lg:block pt-2 text-center">
@@ -50,115 +45,123 @@
     <div class="lg:col-span-7 space-y-4">
       <!-- Active Job / Live Progress -->
       @if (job(); as currentJob) {
-        <app-job-status
-          [job]="currentJob"
-          (reset)="onReset()"
-          (cancel)="onCancelJob()"
-        />
+      <app-job-status [job]="currentJob" (reset)="onReset()" (cancel)="onCancelJob()" />
       }
 
       <!-- Novel Preview & Chapter Selection (Step 2) -->
       @if (novel(); as currentNovel) {
-        @if (!job() || job()?.status === 'completed') {
-          <app-novel-preview
-            [novel]="currentNovel"
-            [isGenerating]="isGenerating()"
-            (startGenerate)="onStartGenerate($event)"
-          />
-        }
+      @if (!job() || job()?.status === 'completed') {
+      <app-novel-preview [novel]="currentNovel" [isGenerating]="isGenerating()"
+        (startGenerate)="onStartGenerate($event)" />
+      }
       }
 
       <!-- Desktop Bento Feature Showcase (Displayed before novel is inspected to keep desktop balanced) -->
       @if (!novel() && !job()) {
-        <div class="hidden lg:grid grid-cols-2 gap-4">
-          <!-- Bento Card 1: Sugoi V4 Engine -->
-          <div class="neo-card bg-white p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 border border-black font-mono">
-                  ACCURACY GUARD
-                </span>
-                <span class="w-2.5 h-2.5 bg-[#D7FF28] rounded-full border border-black"></span>
-              </div>
-              <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
-                Sugoi V4 + Dialogue Guard
-              </h3>
-              <p class="text-[11px] font-mono text-gray-600 leading-relaxed">
-                Splits Japanese sentences cleanly, protects every spoken quotation mark, and auto-disambiguates character pronouns.
-              </p>
+      <div class="hidden lg:grid grid-cols-2 gap-4">
+        <!-- Bento Card 1: Sugoi V4 Engine -->
+        <div
+          class="neo-card bg-white p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 border border-black font-mono">
+                ACCURACY GUARD
+              </span>
+              <span class="w-2.5 h-2.5 bg-[#D7FF28] rounded-full border border-black"></span>
             </div>
-            <div class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
-              <span>Quote Preservation</span>
-              <span class="neo-badge bg-[#FBFAF6] text-black border border-black text-[9px] px-1.5 py-0.5">LOCAL NMT</span>
-            </div>
+            <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
+              Sugoi V4 + Dialogue Guard
+            </h3>
+            <p class="text-[11px] font-mono text-gray-600 leading-relaxed">
+              Splits Japanese sentences cleanly, protects every spoken quotation mark, and auto-disambiguates character
+              pronouns.
+            </p>
           </div>
-
-          <!-- Bento Card 2: Clean EPUB Formatting -->
-          <div class="neo-card bg-[#FFC0AD] p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="neo-badge bg-white text-black text-[9px] px-2 py-0.5 border border-black font-mono">
-                  CLEAN TYPOGRAPHY
-                </span>
-                <span class="w-2.5 h-2.5 bg-black rounded-full"></span>
-              </div>
-              <h3 class="font-black text-sm text-[#55423C] mb-1">
-                Reader-Ready EPUB 3
-              </h3>
-              <p class="text-[11px] font-mono text-[#55423C]/90 leading-relaxed">
-                Zero tab indentation, comfortable paragraph spacing, and 1.6 line height formatted for Kindle, Kobo, and Apple Books.
-              </p>
-            </div>
-            <div class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
-              <span>Kindle & Apple Books</span>
-              <span class="neo-badge bg-white text-black border border-black text-[9px] px-1.5 py-0.5">ZERO TAB INDENT</span>
-            </div>
-          </div>
-
-          <!-- Bento Card 3: Dual Translation Modes -->
-          <div class="neo-card bg-[#E78FB3] p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono">
-                  DUAL FORMATS
-                </span>
-                <span class="w-2.5 h-2.5 bg-white rounded-full border border-black"></span>
-              </div>
-              <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
-                Bilingual or Clean English
-              </h3>
-              <p class="text-[11px] font-mono text-[#1A1A1A]/80 leading-relaxed">
-                Toggle between pure localized English reading or keep Japanese original text side-by-side for language study.
-              </p>
-            </div>
-            <div class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-black">
-              <span>Reading & Study</span>
-              <span class="neo-badge bg-black text-white text-[9px] px-1.5 py-0.5">FLEXIBLE EPUB</span>
-            </div>
-          </div>
-
-          <!-- Bento Card 4: High-Speed Batch & Cache -->
-          <div class="neo-card bg-white p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 border border-black font-mono">
-                  BATCH PIPELINE
-                </span>
-                <span class="w-2.5 h-2.5 bg-[#D7FF28] rounded-full border border-black"></span>
-              </div>
-              <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
-                Batch Translation & Cache
-              </h3>
-              <p class="text-[11px] font-mono text-gray-600 leading-relaxed">
-                Translates units concurrently with SQLite caching so re-generating or reading future chapters is instantaneous.
-              </p>
-            </div>
-            <div class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
-              <span>Kakuyomu Scraper</span>
-              <span class="neo-badge bg-[#FBFAF6] text-black border border-black text-[9px] px-1.5 py-0.5">FAST & CACHED</span>
-            </div>
+          <div
+            class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
+            <span>Quote Preservation</span>
+            <span class="neo-badge bg-[#FBFAF6] text-black border border-black text-[9px] px-1.5 py-0.5">LOCAL
+              NMT</span>
           </div>
         </div>
+
+        <!-- Bento Card 2: Clean EPUB Formatting -->
+        <div
+          class="neo-card bg-[#FFC0AD] p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="neo-badge bg-white text-black text-[9px] px-2 py-0.5 border border-black font-mono">
+                CLEAN TYPOGRAPHY
+              </span>
+              <span class="w-2.5 h-2.5 bg-black rounded-full"></span>
+            </div>
+            <h3 class="font-black text-sm text-[#55423C] mb-1">
+              Reader-Ready EPUB 3
+            </h3>
+            <p class="text-[11px] font-mono text-[#55423C]/90 leading-relaxed">
+              Zero tab indentation, comfortable paragraph spacing, and 1.6 line height formatted for Kindle, Kobo, and
+              Apple Books.
+            </p>
+          </div>
+          <div
+            class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
+            <span>Kindle & Apple Books</span>
+            <span class="neo-badge bg-white text-black border border-black text-[9px] px-1.5 py-0.5">ZERO TAB
+              INDENT</span>
+          </div>
+        </div>
+
+        <!-- Bento Card 3: Dual Translation Modes -->
+        <div
+          class="neo-card bg-[#E78FB3] p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono">
+                DUAL FORMATS
+              </span>
+              <span class="w-2.5 h-2.5 bg-white rounded-full border border-black"></span>
+            </div>
+            <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
+              Bilingual or Clean English
+            </h3>
+            <p class="text-[11px] font-mono text-[#1A1A1A]/80 leading-relaxed">
+              Toggle between pure localized English reading or keep Japanese original text side-by-side for language
+              study.
+            </p>
+          </div>
+          <div
+            class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-black">
+            <span>Reading & Study</span>
+            <span class="neo-badge bg-black text-white text-[9px] px-1.5 py-0.5">FLEXIBLE EPUB</span>
+          </div>
+        </div>
+
+        <!-- Bento Card 4: High-Speed Batch & Cache -->
+        <div
+          class="neo-card bg-white p-4 sm:p-4.5 border-[2px] border-black shadow-[3px_3px_0px_#000] flex flex-col justify-between min-h-[165px]">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2 py-0.5 border border-black font-mono">
+                BATCH PIPELINE
+              </span>
+              <span class="w-2.5 h-2.5 bg-[#D7FF28] rounded-full border border-black"></span>
+            </div>
+            <h3 class="font-black text-sm text-[#1A1A1A] mb-1">
+              Batch Translation & Cache
+            </h3>
+            <p class="text-[11px] font-mono text-gray-600 leading-relaxed">
+              Translates units concurrently with SQLite caching so re-generating or reading future chapters is
+              instantaneous.
+            </p>
+          </div>
+          <div
+            class="pt-3 border-t border-black/10 flex items-center justify-between text-[10px] font-mono font-bold text-[#55423C]">
+            <span>Kakuyomu & Syosetu Scraper</span>
+            <span class="neo-badge bg-[#FBFAF6] text-black border border-black text-[9px] px-1.5 py-0.5">FAST &
+              CACHED</span>
+          </div>
+        </div>
+      </div>
       }
     </div>
   </div>
