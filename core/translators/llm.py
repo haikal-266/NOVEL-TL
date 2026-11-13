@@ -1,6 +1,6 @@
 """
 Local LLM Translator (LM Studio / Ollama / OpenAI-compatible API)
-Enables running Sugoi-14B-Ultra-GGUF, Qwen2.5, or other local models via LM Studio or Ollama.
+Enables running local LLM models via LM Studio or Ollama.
 Supports translating to English (EN) or Indonesian (ID).
 """
 

@@ -196,27 +196,6 @@ export const NovelPreview: React.FC<NovelPreviewProps> = ({
             <Text style={styles.gridCardSub}>Sugoi V4</Text>
           </TouchableOpacity>
 
-          {/* English Polished */}
-          <TouchableOpacity
-            style={[
-              styles.gridCard,
-              targetLang === 'en_polished' && styles.gridCardActive,
-            ]}
-            onPress={() => setTargetLang('en_polished')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.gridCardHeader}>
-              <Text style={styles.gridCardTitle}>EN++</Text>
-              <View
-                style={[
-                  styles.radioDot,
-                  targetLang === 'en_polished' && styles.radioDotActive,
-                ]}
-              />
-            </View>
-            <Text style={styles.gridCardSub}>Sugoi + AI</Text>
-          </TouchableOpacity>
-
           {/* Indonesian Option */}
           <TouchableOpacity
             style={[
