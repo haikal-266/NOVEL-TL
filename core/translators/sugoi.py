@@ -169,7 +169,79 @@ DIALOGUE_CONTRACTIONS = [
     (r"\b([Aa]re)\s+not\b", r"\1n't"),
     (r"\b([Ww]as)\s+not\b", r"\1n't"),
     (r"\b([Ww]ere)\s+not\b", r"\1n't"),
+    (r"\b([Tt]hat)\s+is\b", r"\1's"),
+    (r"\b([Ww]here)\s+is\b", r"\1's"),
+    (r"\b([Hh]ow)\s+is\b", r"\1's"),
+    (r"\b([Ll]et)\s+us\b", r"\1's"),
 ]
+
+LIGHT_NOVEL_PROSE_IDIOMS = [
+    # Physical reactions & gestures
+    (r"\bmade a nodding motion\b", "nodded"),
+    (r"\bmade a nod\b", "nodded"),
+    (r"\bnodded his head\b", "nodded"),
+    (r"\bnodded her head\b", "nodded"),
+    (r"\bnodded their head\b", "nodded"),
+    (r"\blet out a sigh\b", "sighed"),
+    (r"\bheaved a sigh\b", "sighed"),
+    (r"\bbreathed a sigh\b", "sighed"),
+    (r"\blet out a deep sigh\b", "sighed deeply"),
+    (r"\blet out a breath of relief\b", "breathed a sigh of relief"),
+    (r"\bshowed a wry smile\b", "smiled wryly"),
+    (r"\bfloated a wry smile\b", "smiled wryly"),
+    (r"\bformed a wry smile\b", "smiled wryly"),
+    (r"\bwore a wry smile\b", "smiled wryly"),
+    (r"\bshowed a bitter smile\b", "smiled bitterly"),
+    (r"\bfloated a bitter smile\b", "smiled bitterly"),
+    (r"\bformed a bitter smile\b", "smiled bitterly"),
+    (r"\btilted his head in wonder\b", "tilted his head curiously"),
+    (r"\btilted her head in wonder\b", "tilted her head curiously"),
+    (r"\btilted his head in puzzlement\b", "tilted his head quizzically"),
+    (r"\btilted her head in puzzlement\b", "tilted her head quizzically"),
+    (r"\bopened his eyes wide\b", "widened his eyes"),
+    (r"\bopened her eyes wide\b", "widened her eyes"),
+    (r"\bclosed his eyes lightly\b", "closed his eyes gently"),
+    (r"\bclosed her eyes lightly\b", "closed her eyes gently"),
+    (r"\bcleared his throat with a cough\b", "cleared his throat"),
+    (r"\bcleared her throat with a cough\b", "cleared her throat"),
+    (r"\blost his consciousness\b", "lost consciousness"),
+    (r"\blost her consciousness\b", "lost consciousness"),
+    (r"\bregained his consciousness\b", "regained consciousness"),
+    (r"\bregained her consciousness\b", "regained consciousness"),
+    
+    # Emotional & mental states
+    (r"\bfell into silence\b", "fell silent"),
+    (r"\bfell into a state of silence\b", "fell silent"),
+    (r"\bwas in a state of confusion\b", "was bewildered"),
+    (r"\bwas in a state of panic\b", "panicked"),
+    (r"\bwas in a state of shock\b", "was stunned"),
+    (r"\bwas in a state of surprise\b", "was taken aback"),
+    (r"\bwas flooded with feelings of\b", "was overwhelmed by"),
+    
+    # Auditory & dialogue narration
+    (r"\bThe voice of a girl could be heard\b", "A girl's voice called out"),
+    (r"\bThe voice of a girl was heard\b", "A girl's voice rang out"),
+    (r"\bThe voice of a boy could be heard\b", "A boy's voice called out"),
+    (r"\bThe voice of a boy was heard\b", "A boy's voice rang out"),
+    (r"\bThe voice of a man could be heard\b", "A man's voice called out"),
+    (r"\bThe voice of a man was heard\b", "A man's voice rang out"),
+    (r"\bThe voice of a woman could be heard\b", "A woman's voice called out"),
+    (r"\bThe voice of a woman was heard\b", "A woman's voice rang out"),
+    (r"\bwith a trembling voice\b", "in a trembling voice"),
+    (r"\bwith a shaking voice\b", "in a shaky voice"),
+    (r"\bspoke with a loud voice\b", "spoke loudly"),
+    (r"\bspoke with a small voice\b", "spoke softly"),
+    (r"\bspoke in a small voice\b", "spoke softly"),
+]
+
+def smooth_light_novel_prose(text: str) -> str:
+    """
+    Transforms stiff, mechanical NMT phrasing into fluent, expressive light novel English,
+    preserving exact story context, actors, and dialogue intent.
+    """
+    for pattern, repl in LIGHT_NOVEL_PROSE_IDIOMS:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+    return text
 
 def smooth_dialogue_contractions(text: str) -> str:
     """
@@ -334,14 +406,16 @@ class SugoiTranslator:
             gender_en = correct_pronoun_gender(ja_unit, cleaned_en, work_id=work_id)
             # 3. Apply dialogue contraction smoothing ("I do not know" -> "I don't know")
             smoothed_en = smooth_dialogue_contractions(gender_en)
+            # 4. Apply light novel prose naturalization (awkward MT idioms -> fluent prose)
+            prose_en = smooth_light_novel_prose(smoothed_en)
 
             # Ensure sentence has terminal punctuation if Japanese sentence ended with punctuation
-            if ja_unit.endswith(("。", "！", "？")) and not smoothed_en.endswith((".", "!", "?", '"', "'")):
-                smoothed_en += "."
+            if ja_unit.endswith(("。", "！", "？")) and not prose_en.endswith((".", "!", "?", '"', "'")):
+                prose_en += "."
 
             if para_idx not in para_units_map:
                 para_units_map[para_idx] = []
-            para_units_map[para_idx].append(smoothed_en)
+            para_units_map[para_idx].append(prose_en)
 
         # Assemble final paragraphs & apply persistent glossary
         glossary = get_glossary_manager()

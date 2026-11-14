@@ -11,8 +11,7 @@ import subprocess
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HF_MODEL_DIR = os.path.join(PROJECT_ROOT, "output_sugoi_custom", "final_model")
-CT2_TARGET_DIR = os.path.join(PROJECT_ROOT, "models", "sugoi_v4")
-TEMP_CT2_DIR = os.path.join(PROJECT_ROOT, "models", "sugoi_v4_temp")
+CT2_TARGET_DIR = os.path.join(PROJECT_ROOT, "models", "custom_nmt")
 
 
 def main():
@@ -36,12 +35,12 @@ def main():
         sys.exit(1)
 
     print("\n[1/3] Converting PyTorch checkpoint to CTranslate2 (INT8 quantization)...")
-    os.makedirs(TEMP_CT2_DIR, exist_ok=True)
+    os.makedirs(CT2_TARGET_DIR, exist_ok=True)
 
     cmd = [
         converter_cmd,
         "--model", HF_MODEL_DIR,
-        "--output_dir", TEMP_CT2_DIR,
+        "--output_dir", CT2_TARGET_DIR,
         "--quantization", "int8",
         "--force"
     ]
@@ -53,34 +52,30 @@ def main():
         print(f"Conversion failed with error code: {e.returncode}")
         sys.exit(1)
 
-    print("\n[2/3] Backing up old model.bin and deploying new weights...")
-    old_model_bin = os.path.join(CT2_TARGET_DIR, "model.bin")
-    bak_model_bin = os.path.join(CT2_TARGET_DIR, "model.bin.bak")
+    # Copy tokenizer files so CTranslate2 model directory is self-contained
+    for fname in ["source.spm", "target.spm", "tokenizer_config.json", "vocab.json"]:
+        src = os.path.join(HF_MODEL_DIR, fname)
+        dst = os.path.join(CT2_TARGET_DIR, fname)
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
 
-    if os.path.exists(old_model_bin):
-        if not os.path.exists(bak_model_bin):
-            shutil.copy2(old_model_bin, bak_model_bin)
-            print(f"  Backed up original model to: {bak_model_bin}")
-
-    new_model_bin = os.path.join(TEMP_CT2_DIR, "model.bin")
-    if os.path.exists(new_model_bin):
-        shutil.copy2(new_model_bin, old_model_bin)
-        print(f"  Updated: {old_model_bin}")
-
-    # Clean up temp directory
-    shutil.rmtree(TEMP_CT2_DIR, ignore_errors=True)
-
-    print("\n[3/3] Verifying deployment with test translation...")
+    print("\n[2/3] Verifying deployment with CTranslate2 fast inference...")
     try:
-        sys.path.insert(0, PROJECT_ROOT)
-        from core.translators.sugoi import SugoiTranslator
-        sugoi = SugoiTranslator()
+        import ctranslate2
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(HF_MODEL_DIR)
+        translator = ctranslate2.Translator(CT2_TARGET_DIR, device="cpu", compute_type="int8")
+
         test_ja = "俺は静かに立ち上がり、剣を抜いた。"
-        test_en = sugoi.translate_single(test_ja)
+        tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(test_ja))
+        results = translator.translate_batch([tokens])
+        test_en = tokenizer.decode(tokenizer.convert_tokens_to_ids(results[0].hypotheses[0]))
+
         print(f"  Test JA: {test_ja}")
         print(f"  Test EN: {test_en}")
         print("\n" + "=" * 65)
-        print("  DEPLOYMENT SUCCESSFUL! Sugoi V5 Custom is now active.")
+        print("  DEPLOYMENT SUCCESSFUL! Custom MarianMT INT8 is ready.")
         print("=" * 65)
     except Exception as e:
         print(f"Verification error: {e}")
