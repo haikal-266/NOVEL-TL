@@ -38,6 +38,13 @@ SYSTEM_PROMPT_EN_ID = (
     "DILARANG menulis komentar apapun selain nomor dan teks hasil terjemahan langsung."
 )
 
+SYSTEM_PROMPT_EN_ID_SINGLE = (
+    "Kamu adalah editor dan penerjemah novel fiksi profesional berbahasa Indonesia. "
+    "Terjemahkan kalimat atau judul novel berikut ke dalam bahasa Indonesia yang luwes, hidup, dan alami. "
+    "DILARANG memberikan nomor baris seperti [1], tanda kutip pembungkus, pengantar, atau catatan apapun. "
+    "HANYA berikan teks hasil terjemahan langsung."
+)
+
 
 def get_seallm_model_path(
     filename: str = DEFAULT_FILENAME,
@@ -207,7 +214,7 @@ class SeaLLMTranslator:
             user_content += f" (Konteks asli: {format_context_snippet(ja_context)})"
 
         prompt = (
-            f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID}\n"
+            f"<|im_start|>system\n{SYSTEM_PROMPT_EN_ID_SINGLE}\n"
             "DILARANG menulis komentar apapun selain teks hasil terjemahan langsung.<|im_end|>\n"
             f"<|im_start|>user\n{user_content}<|im_end|>\n"
             f"<|im_start|>assistant\n"
@@ -221,7 +228,10 @@ class SeaLLMTranslator:
             stop=["<|im_end|>", "<|endoftext|>"]
         )
 
-        res = self._clean_output(output["choices"][0]["text"], fallback_orig=text)
+        raw = output["choices"][0]["text"].strip()
+        # Strip any accidental [1] or [0] prefix
+        raw = re.sub(r"^\[\d+\]\s*", "", raw)
+        res = self._clean_output(raw, fallback_orig=text)
         # If output accidentally still contains Japanese characters, retry purely English without Japanese context
         if ja_context and re.search(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]", res):
             return self.translate_single_en_to_id(text, ja_context="")

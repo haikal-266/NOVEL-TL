@@ -25,7 +25,8 @@ from core import (
     CacheManager,
     SugoiTranslator,
     EPUBBuilder,
-    clean_english_text
+    clean_english_text,
+    get_glossary_manager
 )
 
 app = FastAPI(title="Novel EPUB Generator API", version="1.0.0")
@@ -146,6 +147,34 @@ def get_translator() -> SugoiTranslator:
     return get_sugoi_translator()
 
 
+STATUS_TAGS_RE = re.compile(
+    r"【(?:連載(?:版)?|完結(?:済)?|書籍化(?:決定)?|アニメ化(?:決定)?|コミカライズ(?:決定)?|Web版|第[0-9０-９一二三四五六七八九十]+部|R-?15|残酷な描写あり|挿絵あり|短編|本編完結)[^】]*】",
+    re.IGNORECASE
+)
+
+def clean_title_for_translation(title: str) -> str:
+    """Strip only promotional/status bracket tags, preserving emphasized story title words like 【パリイ】."""
+    return STATUS_TAGS_RE.sub("", title).strip()
+
+
+def translate_novel_title(title_ja: str, sugoi: SugoiTranslator) -> str:
+    """Accurately translate novel titles with subtitle/delimiter separation and clean punctuation."""
+    clean_t = clean_title_for_translation(title_ja)
+    if any(sep in clean_t for sep in ["〜", "～"]):
+        parts = re.split(r"[〜～]", clean_t)
+        main_part = parts[0].strip()
+        sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
+        main_en = clean_english_text(sugoi.translate_single(main_part)).replace("♪", "").strip()
+        sub_en = clean_english_text(sugoi.translate_single(sub_part)).replace("♪", "").strip() if sub_part else ""
+        if main_en and sub_en:
+            main_en = main_en.rstrip(" .")
+            sub_en = sub_en.lstrip(" .")
+            return f"{main_en} - {sub_en}"
+        return main_en or sub_en
+    else:
+        return clean_english_text(sugoi.translate_single(clean_t)).replace("♪", "").strip()
+
+
 def sanitize_filename(name: str) -> str:
     sanitized = re.sub(r'[\\/*?:"<>|]', "", name)
     sanitized = re.sub(r"\s+", " ", sanitized).strip()
@@ -157,6 +186,55 @@ def sanitize_filename(name: str) -> str:
 @app.get("/api/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/glossary/stats")
+def glossary_stats() -> Dict[str, int]:
+    return get_glossary_manager().get_stats()
+
+
+@app.get("/api/glossary/terms")
+def glossary_terms(work_id: Optional[str] = None) -> Dict[str, str]:
+    return get_glossary_manager().get_terms(work_id=work_id or "")
+
+
+class AddTermRequest(BaseModel):
+    termJa: str
+    termEn: str
+    category: Optional[str] = "custom"
+    workId: Optional[str] = ""
+
+
+@app.post("/api/glossary/term")
+def add_glossary_term(req: AddTermRequest) -> Dict[str, str]:
+    get_glossary_manager().add_term(
+        term_ja=req.termJa,
+        term_en=req.termEn,
+        category=req.category or "custom",
+        work_id=req.workId or ""
+    )
+    return {"status": "saved", "termJa": req.termJa, "termEn": req.termEn}
+
+
+class AddCharacterGenderRequest(BaseModel):
+    nameJa: str
+    gender: str  # FEMALE or MALE
+    workId: Optional[str] = ""
+
+
+@app.get("/api/glossary/characters")
+def list_character_genders(work_id: Optional[str] = None) -> Dict[str, str]:
+    return get_glossary_manager().get_character_genders(work_id=work_id or "")
+
+
+@app.post("/api/glossary/character")
+def set_character_gender(req: AddCharacterGenderRequest) -> Dict[str, str]:
+    get_glossary_manager().set_character_gender(
+        name_ja=req.nameJa,
+        gender=req.gender,
+        work_id=req.workId or ""
+    )
+    return {"status": "saved", "nameJa": req.nameJa, "gender": req.gender.upper()}
 
 
 @app.post("/api/novel/inspect", response_model=NovelInspectResponse)
@@ -188,21 +266,16 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
             raise HTTPException(status_code=502, detail=f"Failed to fetch novel from {source.title()}: {scrape_err}")
 
     # Immediately translate novel title and author to English if not yet translated
-    if not novel_info.get("title_en"):
+    should_translate_title = (
+        not novel_info.get("title_en")
+        or "I'll do everything" in novel_info.get("title_en", "")
+    )
+    if should_translate_title:
         try:
             sugoi = get_sugoi_translator()
-            clean_t = re.sub(r"【.*?】", "", novel_info.get("title", "")).strip()
-            if any(sep in clean_t for sep in ["〜", "～"]):
-                parts = re.split(r"[〜～]", clean_t)
-                main_part = parts[0].strip()
-                sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
-                main_en = sugoi.translate_single(main_part).replace("♪", "").strip()
-                sub_en = sugoi.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
-                novel_info["title_en"] = f"{main_en} - {sub_en}" if sub_en else main_en
-            else:
-                novel_info["title_en"] = sugoi.translate_single(clean_t).replace("♪", "").strip()
-
-            novel_info["author_en"] = sugoi.translate_single(novel_info.get("author", "")).replace("♪", "").strip()
+            novel_info["title_en"] = translate_novel_title(novel_info.get("title", ""), sugoi)
+            if not novel_info.get("author_en"):
+                novel_info["author_en"] = sugoi.translate_single(novel_info.get("author", "")).replace("♪", "").strip()
             cache.save_novel_info(novel_info)
         except Exception as e:
             print(f"[Inspect] Title translation skipped: {e}")
@@ -307,18 +380,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         author_meta_key = f"author_{target_lang}"
         synopsis_meta_key = f"synopsis_{target_lang}"
 
-        if force_translate or not novel_info.get(title_meta_key):
-            clean_t = re.sub(r"【.*?】", "", novel_info["title"]).strip()
-            if any(sep in clean_t for sep in ["〜", "～"]):
-                parts = re.split(r"[〜～]", clean_t)
-                main_part = parts[0].strip()
-                sub_part = parts[1].strip() if len(parts) > 1 and parts[1].strip() else ""
-                main_en = sugoi.translate_single(main_part).replace("♪", "").strip()
-                sub_en = sugoi.translate_single(sub_part).replace("♪", "").strip() if sub_part else ""
-                title_en = f"{main_en} - {sub_en}" if sub_en else main_en
-            else:
-                title_en = sugoi.translate_single(clean_t).replace("♪", "").strip()
-
+        if force_translate or not novel_info.get(title_meta_key) or "I'll do everything" in novel_info.get(title_meta_key, ""):
+            title_en = translate_novel_title(novel_info["title"], sugoi)
             novel_info["title_en"] = title_en
             if target_lang == "id" and seallm:
                 novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en, ja_context=novel_info["title"])
@@ -380,8 +443,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
                 job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 1 JP -> EN (Sugoi)..."
-                en_title = clean_english_text(sugoi.translate_single(ep_title_ja))
-                en_texts = sugoi.translate_texts(clean_texts, batch_size=16)
+                en_title = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
+                en_texts = sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
 
                 if job.cancelled:
                     break
@@ -407,7 +470,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             else:
                 # ====== STANDARD JP -> EN (Sugoi V4) ======
                 job.message = f"Translating Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
-                title_tl = clean_english_text(sugoi.translate_single(ep_title_ja))
+                title_tl = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
                 job.chapterTitle = title_tl
 
                 def on_en_progress(done: int, total: int) -> None:
@@ -418,7 +481,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 en_texts = sugoi.translate_texts(
                     clean_texts,
                     batch_size=16,
-                    progress_cb=on_en_progress
+                    progress_cb=on_en_progress,
+                    work_id=work_id
                 )
                 final_translations = [clean_english_text(t) for t in en_texts]
 

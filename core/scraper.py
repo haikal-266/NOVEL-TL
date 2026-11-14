@@ -9,6 +9,7 @@ import urllib.request
 import urllib.error
 from typing import Dict, List, Optional, Tuple
 from bs4 import BeautifulSoup
+from .glossary import get_glossary_manager
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -265,8 +266,11 @@ class KakuyomuScraper:
         if not body_el:
             raise RuntimeError(f"Could not find episode body content at {ep_url}")
 
-        # Clean ruby readings in one fast pass
-        body_clean_html = re.sub(r"<(rt|rp)[^>]*>.*?</\1>", "", str(body_el), flags=re.DOTALL)
+        # Harvest and apply ruby ateji readings
+        glossary = get_glossary_manager()
+        glossary.harvest_ruby_ateji(str(body_el), work_id=self.work_id)
+        body_clean_html = glossary.substitute_ruby_in_html(str(body_el))
+        body_clean_html = re.sub(r"<(rt|rp)[^>]*>.*?</\1>", "", body_clean_html, flags=re.DOTALL)
         clean_body = BeautifulSoup(body_clean_html, "html.parser")
 
         raw_p_list = body_el.find_all("p")
@@ -442,8 +446,11 @@ class SyosetuScraper:
         if not body_el:
             raise RuntimeError(f"Could not find episode body content at {ep_url}")
 
-        # Clean ruby readings (<rt>, <rp>)
-        body_clean_html = re.sub(r"<(rt|rp)[^>]*>.*?</\1>", "", str(body_el), flags=re.DOTALL)
+        # Harvest and apply ruby ateji readings
+        glossary = get_glossary_manager()
+        glossary.harvest_ruby_ateji(str(body_el), work_id=self.work_id)
+        body_clean_html = glossary.substitute_ruby_in_html(str(body_el))
+        body_clean_html = re.sub(r"<(rt|rp)[^>]*>.*?</\1>", "", body_clean_html, flags=re.DOTALL)
         clean_body = BeautifulSoup(body_clean_html, "html.parser")
 
         raw_p_list = body_el.find_all("p")

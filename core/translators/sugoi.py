@@ -12,6 +12,7 @@ from typing import List, Dict, Tuple, Optional, Callable
 import ctranslate2
 import sentencepiece as spm
 from core.speech_markers import correct_pronoun_gender
+from core.glossary import get_glossary_manager
 
 MODEL_REPO = "entai2965/sugoi-v4-ja-en-ctranslate2"
 DEFAULT_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "models", "sugoi_v4")
@@ -146,6 +147,67 @@ def clean_dialogue_and_narration(ja_text: str, en_text: str) -> str:
     return en
 
 
+DIALOGUE_CONTRACTIONS = [
+    (r"\b([Ii])\s+am\b", r"\1'm"),
+    (r"\b([Yy]ou|[Ww]e|[Tt]hey)\s+are\b", r"\1're"),
+    (r"\b([Hh]e|[Ss]he|[Ii]t|[Tt]here|[Ww]hat|[Ww]ho)\s+is\b", r"\1's"),
+    (r"\b([Ii]|[Yy]ou|[Hh]e|[Ss]he|[Ww]e|[Tt]hey)\s+have\b", r"\1've"),
+    (r"\b([Ii]|[Yy]ou|[Hh]e|[Ss]he|[Ww]e|[Tt]hey)\s+will\b", r"\1'll"),
+    (r"\b([Ii]|[Yy]ou|[Hh]e|[Ss]he|[Ww]e|[Tt]hey)\s+would\b", r"\1'd"),
+    (r"\b([Cc]an)not\b", r"\1't"),
+    (r"\b([Dd]o)\s+not\b", r"\1n't"),
+    (r"\b([Dd]oes)\s+not\b", r"\1n't"),
+    (r"\b([Dd]id)\s+not\b", r"\1n't"),
+    (r"\b([Ww]ill)\s+not\b", r"won't"),
+    (r"\b([Ww]ould)\s+not\b", r"\1n't"),
+    (r"\b([Cc]ould)\s+not\b", r"\1n't"),
+    (r"\b([Ss]hould)\s+not\b", r"\1n't"),
+    (r"\b([Hh]ave)\s+not\b", r"\1n't"),
+    (r"\b([Hh]as)\s+not\b", r"\1n't"),
+    (r"\b([Hh]ad)\s+not\b", r"\1n't"),
+    (r"\b([Ii]s)\s+not\b", r"\1n't"),
+    (r"\b([Aa]re)\s+not\b", r"\1n't"),
+    (r"\b([Ww]as)\s+not\b", r"\1n't"),
+    (r"\b([Ww]ere)\s+not\b", r"\1n't"),
+]
+
+def smooth_dialogue_contractions(text: str) -> str:
+    """
+    Apply natural conversational contractions to text inside dialogue quotes ("..."),
+    turning stiff machine dialogue tags like 'I do not know' into fluent 'I don't know'.
+    """
+    if '"' not in text:
+        return text
+
+    def contract_inner(m: re.Match) -> str:
+        s = m.group(1)
+        for pattern, repl in DIALOGUE_CONTRACTIONS:
+            s = re.sub(pattern, repl, s)
+        return f'"{s}"'
+
+    return re.sub(r'"([^"]+)"', contract_inner, text)
+
+
+def segment_japanese_paragraph(text: str, max_chars: int = 250) -> List[str]:
+    """
+    Intelligently segment a Japanese paragraph for NMT translation.
+    - Preserves paragraph cohesion for standard paragraphs (<= 250 chars) so Sugoi sees subject pronouns.
+    - Only splits long run-on narrative blocks (> 250 chars) at punctuation boundaries,
+      strictly protecting dialogue quotes 「...」 and 『...』.
+    """
+    if not text or not text.strip():
+        return []
+
+    text = text.strip()
+
+    # If within context window (<= 250 chars), keep paragraph together as 1 unit
+    if len(text) <= max_chars:
+        return [text]
+
+    # For unusually long paragraphs, split at punctuation while protecting quotes
+    return split_japanese_sentences(text)
+
+
 class SugoiTranslator:
     def __init__(self, model_dir: str = DEFAULT_MODEL_DIR, device: str = "auto"):
         self.model_dir = os.path.abspath(model_dir)
@@ -204,22 +266,24 @@ class SugoiTranslator:
         self,
         texts: List[str],
         batch_size: int = 16,
-        progress_cb: Optional[Callable[[int, int], None]] = None
+        progress_cb: Optional[Callable[[int, int], None]] = None,
+        work_id: str = ""
     ) -> List[str]:
         """
         Translate a list of Japanese texts/paragraphs to English.
-        - Splits multi-sentence paragraphs into individual sentence units to prevent NMT hallucinations.
-        - Batches all units concurrently for ultra-fast CTranslate2 inference.
-        - Protects dialogue quotes (Dialogue Quote Guard).
-        - Corrects misidentified gender pronouns using Japanese speech markers.
+        - Preserves paragraph-level cohesion (<= 250 chars) to maintain subject pronouns and tense flow.
+        - Only splits long run-on narrative blocks (> 250 chars) while protecting dialogue quotes.
+        - Optimized CTranslate2 beam search: length_penalty=0.6, coverage_penalty=0.2, repetition_penalty=1.05.
+        - Dialogue quote guard & natural dialogue contraction smoothing ("I do not" -> "I don't").
+        - Speech marker gender correction & persistent glossary application.
         """
         results = [""] * len(texts)
 
-        # Expand non-empty paragraphs into sentence units, keeping track of paragraph index
+        # Expand non-empty paragraphs into coherent translation units
         unit_map: List[Tuple[int, str]] = []
         for idx, text in enumerate(texts):
             if text and text.strip():
-                units = split_japanese_sentences(text)
+                units = segment_japanese_paragraph(text, max_chars=250)
                 for u in units:
                     unit_map.append((idx, u))
 
@@ -239,12 +303,14 @@ class SugoiTranslator:
             # Tokenize
             tokenized_batch = [self.sp_source.encode(t, out_type=str) for t in batch_texts]
 
-            # Translate using optimal Sugoi V4 beam search and anti-repetition settings
+            # Translate using tuned CTranslate2 beam search
             outputs = self.translator.translate_batch(
                 tokenized_batch,
                 beam_size=5,
-                repetition_penalty=1.2,
-                no_repeat_ngram_size=3,
+                length_penalty=0.6,
+                coverage_penalty=0.2,
+                repetition_penalty=1.05,
+                no_repeat_ngram_size=0,
                 replace_unknowns=True,
                 max_batch_size=batch_size
             )
@@ -262,32 +328,37 @@ class SugoiTranslator:
         # Post-process and group units back into paragraphs
         para_units_map: Dict[int, List[str]] = {}
         for (para_idx, ja_unit), en_unit in zip(unit_map, translated_units):
-            # Apply dialogue quote guard
+            # 1. Apply dialogue quote guard
             cleaned_en = clean_dialogue_and_narration(ja_unit, en_unit)
-            # Apply speech marker gender correction
-            gender_en = correct_pronoun_gender(ja_unit, cleaned_en)
+            # 2. Apply speech marker gender correction
+            gender_en = correct_pronoun_gender(ja_unit, cleaned_en, work_id=work_id)
+            # 3. Apply dialogue contraction smoothing ("I do not know" -> "I don't know")
+            smoothed_en = smooth_dialogue_contractions(gender_en)
 
             # Ensure sentence has terminal punctuation if Japanese sentence ended with punctuation
-            if ja_unit.endswith(("。", "！", "？")) and not gender_en.endswith((".", "!", "?", '"', "'")):
-                gender_en += "."
+            if ja_unit.endswith(("。", "！", "？")) and not smoothed_en.endswith((".", "!", "?", '"', "'")):
+                smoothed_en += "."
 
             if para_idx not in para_units_map:
                 para_units_map[para_idx] = []
-            para_units_map[para_idx].append(gender_en)
+            para_units_map[para_idx].append(smoothed_en)
 
-        # Assemble final paragraphs
+        # Assemble final paragraphs & apply persistent glossary
+        glossary = get_glossary_manager()
         for para_idx, unit_list in para_units_map.items():
             joined = " ".join(unit_list)
             # Clean punctuation spacing: space before punctuation -> no space
             joined = re.sub(r'\s+([,.:;!?])', r'\1', joined)
             joined = re.sub(r'\s+', ' ', joined).strip()
+            # Apply persistent glossary overrides (work-specific & global terms)
+            joined = glossary.apply_post_glossary(joined, work_id=work_id)
             results[para_idx] = joined
 
         return results
 
-    def translate_single(self, text: str) -> str:
+    def translate_single(self, text: str, work_id: str = "") -> str:
         """Translate a single sentence or title."""
         if not text or not text.strip():
             return ""
-        res = self.translate_texts([text], batch_size=1)
+        res = self.translate_texts([text], batch_size=1, work_id=work_id)
         return res[0]

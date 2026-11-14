@@ -9,6 +9,7 @@ from .scraper import (
 from .cache_manager import CacheManager
 from .epub_builder import EPUBBuilder, clean_english_text
 from .translators.sugoi import SugoiTranslator
+from .glossary import GlossaryManager, get_glossary_manager
 
 def __getattr__(name: str):
     if name == "SeaLLMTranslator":
@@ -31,5 +32,7 @@ __all__ = [
     "clean_english_text",
     "SugoiTranslator",
     "SeaLLMTranslator",
-    "LLMTranslator"
+    "LLMTranslator",
+    "GlossaryManager",
+    "get_glossary_manager"
 ]
