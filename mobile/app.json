@@ -1,23 +1,24 @@
 {
   "expo": {
-    "name": "NovelTL",
-    "slug": "novel-tl",
+    "name": "VelTL",
+    "slug": "vel-tl",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "primaryColor": "#D7FF28",
+    "primaryColor": "#FFB9A6",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FBFAF6"
+      "backgroundColor": "#FFB9A6"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.kallkun.veltl",
       "adaptiveIcon": {
-        "backgroundColor": "#D7FF28",
+        "backgroundColor": "#FFB9A6",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

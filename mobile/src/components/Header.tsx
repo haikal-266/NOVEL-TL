@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { THEME } from '../theme';
 
@@ -14,12 +14,15 @@ export const Header: React.FC<HeaderProps> = ({ serverConnected, onOpenSettings 
       {/* Top Navbar */}
       <View style={styles.navBar}>
         <View style={styles.brandGroup}>
-          <View style={styles.logoBox}>
-            <Feather name="book-open" size={18} color="#121212" />
+          <View style={[styles.logoBox, { backgroundColor: '#FFB9A6', overflow: 'hidden' }]}>
+            <Image
+              source={require('../../assets/favicon.png')}
+              style={{ width: 22, height: 22, resizeMode: 'contain' }}
+            />
           </View>
           <View>
-            <Text style={styles.brandTitle}>NOVEL TL</Text>
-            <Text style={styles.brandSub}>KAKUYOMU → EPUB</Text>
+            <Text style={styles.brandTitle}>VelTL</Text>
+            <Text style={styles.brandSub}>WEB NOVEL → EPUB</Text>
           </View>
         </View>
 
