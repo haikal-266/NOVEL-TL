@@ -17,9 +17,12 @@ output/
 cache/
 data/*.db
 data/*.jsonl
+data/*.json
 data/*.log
 data/dataset/
-output_sugoi_custom/
+data/en_id_split/
+data/*.epub
+output_*/
 *.epub
 
 # --- Python ---

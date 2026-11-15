@@ -95,7 +95,7 @@ class JobState(BaseModel):
 # Global job store and singleton translators
 JOBS: Dict[str, JobState] = {}
 _sugoi_translator = None
-_seallm_translator = None
+_id_translator = None
 _translator_lock = threading.Lock()
 
 def get_sugoi_translator() -> SugoiTranslator:
@@ -106,42 +106,16 @@ def get_sugoi_translator() -> SugoiTranslator:
             _sugoi_translator = SugoiTranslator()
         return _sugoi_translator
 
-def get_seallm_translator(job: Optional[JobState] = None):
-    global _seallm_translator
+def get_id_translator(job: Optional[JobState] = None):
+    global _id_translator
     with _translator_lock:
-        if _seallm_translator is None:
-            from core.translators.seallm import (
-                is_seallm_installed,
-                get_seallm_model_path,
-                download_seallm_with_progress,
-                SeaLLMTranslator
-            )
-
-            model_path = get_seallm_model_path()
-            if not is_seallm_installed():
-                if job:
-                    job.message = "Downloading SeaLLM model for the first time from Hugging Face..."
-                    job.progressPercent = 1
-
-                def on_download_progress(done_bytes: int, total_bytes: int, speed: float) -> bool:
-                    if job:
-                        if job.cancelled:
-                            return False  # Abort download immediately
-                        pct = int((done_bytes / total_bytes) * 100) if total_bytes else 1
-                        done_mb = done_bytes / (1024 * 1024)
-                        total_mb = total_bytes / (1024 * 1024)
-                        job.message = f"Downloading SeaLLM: {done_mb:.1f}/{total_mb:.1f} MB ({pct}%) [{speed:.1f} MB/s]..."
-                        job.progressPercent = min(99, pct)
-                    return True
-
-                model_path = download_seallm_with_progress(progress_cb=on_download_progress)
-
+        if _id_translator is None:
             if job:
-                job.message = "Loading SeaLLM model into memory..."
+                job.message = "Memuat engine MarianMT EN->ID CTranslate2 ke memori..."
                 job.progressPercent = 1
-
-            _seallm_translator = SeaLLMTranslator(model_path=model_path, n_threads=4, n_ctx=2048)
-        return _seallm_translator
+            from core.translators.marian_id import MarianIDTranslator
+            _id_translator = MarianIDTranslator()
+        return _id_translator
 
 def get_translator() -> SugoiTranslator:
     return get_sugoi_translator()
@@ -373,7 +347,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         # Initialize translators
         sugoi = get_sugoi_translator()
-        seallm = get_seallm_translator(job=job) if target_lang == "id" else None
+        id_trans = get_id_translator(job=job) if target_lang == "id" else None
 
         # Translate metadata if not present (or if forceTranslate is requested)
         title_meta_key = f"title_{target_lang}"
@@ -383,16 +357,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         if force_translate or not novel_info.get(title_meta_key) or "I'll do everything" in novel_info.get(title_meta_key, ""):
             title_en = translate_novel_title(novel_info["title"], sugoi)
             novel_info["title_en"] = title_en
-            if target_lang == "id" and seallm:
-                novel_info[title_meta_key] = seallm.translate_single_en_to_id(title_en, ja_context=novel_info["title"])
+            if target_lang == "id" and id_trans:
+                novel_info[title_meta_key] = id_trans.translate_single(title_en)
             else:
                 novel_info[title_meta_key] = title_en
 
         if force_translate or not novel_info.get(author_meta_key):
             author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
             novel_info["author_en"] = author_en
-            if target_lang == "id" and seallm:
-                novel_info[author_meta_key] = seallm.translate_single_en_to_id(author_en, ja_context=novel_info["author"])
+            if target_lang == "id" and id_trans:
+                novel_info[author_meta_key] = id_trans.translate_single(author_en)
             else:
                 novel_info[author_meta_key] = author_en
 
@@ -439,19 +413,19 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             chap_weight = 1.0 / job.totalChapters
             chap_base = (chap_i - 1) / job.totalChapters
 
-            if target_lang == "id" and seallm:
+            if target_lang == "id" and id_trans:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
-                job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 1 JP -> EN (Sugoi)..."
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
                 en_title = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
                 en_texts = sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
 
                 if job.cancelled:
                     break
 
-                # Step 2: EN -> ID via SeaLLM 1.5B (Natural, literary Indonesian with speech markers)
-                job.message = f"Chapter {chap_i}/{job.totalChapters}: Stage 2 EN -> ID (SeaLLM)..."
-                title_tl = seallm.translate_single_en_to_id(en_title, ja_context=ep_title_ja)
+                # Step 2: EN -> ID via MarianMT INT8 (Ultra fast, zero hallucination, naturalized)
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (MarianMT INT8)..."
+                title_tl = id_trans.translate_single(en_title)
                 job.chapterTitle = title_tl
 
                 def on_id_progress(done: int, total: int) -> None:
@@ -459,10 +433,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                     current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
                     job.progressPercent = min(90, int(current_pct))
 
-                id_texts = seallm.translate_en_to_id(
+                id_texts = id_trans.translate_en_to_id(
                     en_texts,
-                    ja_texts=clean_texts,
-                    batch_size=4,
+                    batch_size=32,
                     progress_cb=on_id_progress
                 )
                 final_translations = id_texts
