@@ -35,6 +35,23 @@ IDIOM_REPLACEMENTS = [
     (r"\btidur panas\b", "tidur kriogenik"),
     (r"\btidur dingin\b", "tidur kriogenik"),
     (r"\btidur lama dingin\b", "tidur kriogenik panjang"),
+    (r"\btidur kedinginan\b", "tidur kriogenik"),
+    (r"\btidur kedinginan panjang\b", "tidur kriogenik panjang"),
+
+    # Medical, Anatomy & Transport Disambiguation
+    (r"\b(meletakkan|menaruh|menempelkan)\s+jarinya\s+ke\s+kuil(nya)?\b", "menempelkan jarinya ke pelipisnya"),
+    (r"\bdi atas pelipisnya\b", "ke pelipisnya"),
+    (r"\bke kuilnya\b", "ke pelipisnya"),
+    (r"\bhukuman (aku|saya) yang tersisa\b", "vonis sisa hidupku"),
+    (r"\bhukuman yang tersisa\b", "vonis sisa hidup"),
+    (r"\bsiaran mobil\b", "pengumuman di dalam gerbong"),
+    (r"\bbagian dalam mobil\b", "bagian dalam gerbong"),
+
+    # Common Corrupted Name & Typo Guards
+    (r"\bHeonda\b", "Honda"),
+    (r"\bMINao\b", "Minako"),
+    (r"\bThe Minako\b", "Minako"),
+    (r"\bMINako\b", "Minako"),
     
     # Actions & Reactions
     (r"\bmelepaskan menguap besar\b", "menguap lebar"),
@@ -112,24 +129,26 @@ IDIOM_REPLACEMENTS = [
     (r"\btatapan yang aneh\b", "ekspresi serbasalah"),
     
     # Gratitude Relative-Clause Inversion Guard
+    (r"^.*?\b(kau|kamu),\s*yang seharusnya aku (berterima kasih|bersyukur).*$", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi."),
     (r"\bKetika aku bangun,\s*kau,\s*yang seharusnya aku bersyukur,\s*tidak lagi ada di sana\.?\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi."),
     (r"\bSaat aku bangun,\s*kau tidak lagi ada untuk berterima kasih padaku\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi"),
     (r"\bKetika aku bangun,\s*kau tidak lagi ada untuk berterima kasih padaku\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi"),
-    (r"\bKau,\s*yang seharusnya aku berterima kasih.*?\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi."),
-    (r"\bKamu,\s*yang seharusnya aku berterima kasih.*?\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi."),
-    (r"\bKetika aku bangun,\s*kau,\s*yang seharusnya aku berterima kasih,\s*tidak lagi ada di sana\.?\b", "Saat aku terbangun, kau—orang yang seharusnya kuucapkan terima kasih—sudah tidak ada lagi."),
 
     # General Prose
     (r"\bdari masa depan saya diri\b", "dari diriku di masa depan"),
+    (r"\bdari masa depan aku diri\b", "dari diriku di masa depan"),
     (r"\buntuk masa lalu Anda sendiri\b", "untuk dirimu di masa lalu"),
     (r"\bdari masa depan saya\b", "dari masa depanku"),
     (r"\bke masa lalu Anda\b", "ke masa lalumu"),
     (r"\bbunga-bunga dalam satu bungkus\b", "sebuket bunga"),
     (r"\bsebuah karangan bunga\b", "sebuket bunga"),
     (r"\bkamar bayi\b", "buaian ayunan"),
+    (r"\bTujuhpuluh\b", "Tujuh puluh"),
+    (r"\btujuhpuluh\b", "tujuh puluh"),
     (r"\bsebelas belas tahun\b", "tujuh puluh tahun"),
     (r"\bsepuluh puluh tahun\b", "tujuh puluh tahun"),
     (r"\bsetuju ratusan tahun\b", "tujuh puluh tahun"),
+    (r"\btidur lama yang dingin\b", "tidur kriogenik panjang"),
 ]
 
 

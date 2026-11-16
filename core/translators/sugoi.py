@@ -285,7 +285,7 @@ def patch_japanese_grammar(text: str) -> str:
     narrator_action_pat = r"(^|[。！？\n]\s*)((小さく|大きく|深く|静かに|そっと|ゆっくり)?(頷[いて]|首を[振縦横]|息を[吸吐呑]|声を出そ|目を開[けい]|目を閉[じい]|口を開[けい]|問いかけ|尋ね))"
     res = re.sub(narrator_action_pat, r"\1私が\2", res)
 
-    # 3. Japanese idioms that confuse NMT into bizarre literalisms
+    # 3. Japanese idioms and benefactive grammar that confuse NMT
     # お腹の虫の音 (stomach bug) -> お腹が鳴る音 (stomach rumbling)
     res = re.sub(r"お腹の虫の音", "お腹が鳴る音", res)
     res = re.sub(r"お腹の虫が鳴([くいたいて])", r"お腹が鳴\1", res)
@@ -298,6 +298,20 @@ def patch_japanese_grammar(text: str) -> str:
 
     # いかにも仕事ができそうな雰囲気 -> 有能で頼もしい雰囲気
     res = re.sub(r"いかにも仕事ができそうな雰囲気", "有能で頼もしい雰囲気", res)
+
+    # 4. Benefactive / Kenjougo payment & perspective inversions:
+    # 'お支払いいただいております' -> 'すでに別の方が支払いました'
+    # Prevents NMT from inverting who paid and who received the hospital fee
+    res = re.sub(r"(すでに|既に)?(別の方から)?お支払いいただいております", r"すでに別の方が支払いました", res)
+
+    # '[その/あの]優しさが申し訳ない' -> '[その]優しさに恐縮する' (Feeling humble/guilty towards kindness)
+    res = re.sub(r"([そのあの]優しさ)が申し訳ない", r"\1に恐縮する", res)
+
+    # '余命宣告' -> '余命の告知' (Life expectancy notification, prevents 'prison sentence' translation)
+    res = re.sub(r"余命宣告", "余命の告知", res)
+
+    # '素直じゃないな' -> '素直じゃない性格だな' (Not being honest/straightforward with feelings)
+    res = re.sub(r"素直じゃないなと(少しだけ)?笑", r"素直じゃない性格だなと\1笑", res)
 
     return res
 

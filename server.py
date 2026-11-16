@@ -481,7 +481,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
                 # Step 2: EN -> ID via MarianMT INT8 (Ultra fast, zero hallucination, naturalized)
                 job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (MarianMT INT8)..."
-                title_tl = id_trans.translate_single(en_title)
+                title_tl = id_trans.translate_single(en_title, ja_text=ep_title_ja)
                 job.chapterTitle = title_tl
 
                 def on_id_progress(done: int, total: int) -> None:
@@ -491,8 +491,10 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
                 id_texts = id_trans.translate_en_to_id(
                     en_texts,
+                    ja_texts=clean_texts,
                     batch_size=32,
-                    progress_cb=on_id_progress
+                    progress_cb=on_id_progress,
+                    work_id=work_id
                 )
                 final_translations = id_texts
 
