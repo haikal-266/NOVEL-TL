@@ -21,6 +21,7 @@ data/*.json
 data/*.log
 data/dataset/
 data/en_id_split/
+data/jp_en_split/
 data/*.epub
 output_*/
 *.epub

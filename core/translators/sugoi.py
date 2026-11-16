@@ -232,7 +232,71 @@ LIGHT_NOVEL_PROSE_IDIOMS = [
     (r"\bspoke with a loud voice\b", "spoke loudly"),
     (r"\bspoke with a small voice\b", "spoke softly"),
     (r"\bspoke in a small voice\b", "spoke softly"),
+
+    # Translationese & Zero-Anaphora Safety Net
+    (r"\bThe moment I woke up, you were no longer there to thank me\b", "When I woke up, you, whom I should have thanked, were no longer there"),
+    (r"\byou were no longer there to thank me\b", "you, whom I should have thanked, were no longer there"),
+    (r"\bthe sound of my stomach bug telling me that I was hungry\b", "the rumbling of my stomach telling me that I was hungry"),
+    (r"\bthe sound of my stomach bug\b", "the rumbling of my stomach"),
+    (r"\bstomach bug\b", "stomach rumbling"),
+    (r"\binorganic ceiling\b", "cold, sterile ceiling"),
+    (r"\bweight of the comforter on me\b", "weight of the blanket covering me"),
+    (r"\bSeconds were prohibited\b", "Second helpings were forbidden"),
+    (r"\bhad an air about (him|her|them) that made it seem like \1 could do \1'?s? job\b", r"gave off the aura of someone highly competent at work"),
+    (r"\blanguidness of my body\b", "sluggishness of my body"),
+    (r"\bIn this day and age\b", "In this era"),
+    (r"\bin this day and age\b", "in this era"),
+    (r"\bIt was something she had felt after waking up from a long sleep\b", "It was what I felt after waking up from that long sleep"),
+    (r"\bturned down the offer and said, I'll check a little\b", "shook his head lightly and said, I'll check on that"),
 ]
+
+def patch_japanese_grammar(text: str) -> str:
+    """
+    Pre-processes Japanese text before NMT encoding to resolve frequent
+    zero-anaphora, relative-clause subject inversions, and colloquial idioms.
+    """
+    if not text or not text.strip():
+        return text
+
+    res = text
+
+    # 1. Zero-anaphora relative clause: 'Xって言うべきあなた' -> '私が感謝すべきあなた'
+    # Prevents Sugoi from inverting: "you were there to thank me" -> "you, whom I should thank"
+    res = re.sub(
+        r"(私[がは]?)?(ありがとう|感謝|お礼|お詫び|謝罪|ごめん)って?言うべき(あなた|人|相手|君)",
+        r"私が感謝すべき\3",
+        res
+    )
+    res = re.sub(
+        r"(私[がは]?)?(感謝|お礼)すべき(あなた|人|相手|君)",
+        r"私が感謝すべき\3",
+        res
+    )
+
+    # 2. Omitted first-person reflection clauses (e.g. 目覚めた後に感じたこと -> 私が目覚めた後に感じたこと)
+    # Prevents Sugoi from guessing 'she' instead of narrator 'I'
+    res = re.sub(
+        r"^([長い]*[眠休]りから[目覚起]めた後[でに]感じたこと)",
+        r"私が\1",
+        res
+    )
+
+    # 3. Japanese idioms that confuse NMT into bizarre literalisms
+    # お腹の虫の音 (stomach bug) -> お腹が鳴る音 (stomach rumbling)
+    res = re.sub(r"お腹の虫の音", "お腹が鳴る音", res)
+    res = re.sub(r"お腹の虫が鳴([くいたいて])", r"お腹が鳴\1", res)
+
+    # おかわりは禁止 (Seconds were prohibited) -> 二杯目は禁止 (Second helpings were forbidden)
+    res = re.sub(r"おかわりは禁止", "二杯目は禁止", res)
+
+    # 無機質な天井 -> 冷たい天井
+    res = re.sub(r"病室の無機質な天井", "病室の冷たい天井", res)
+
+    # いかにも仕事ができそうな雰囲気 -> 有能で頼もしい雰囲気
+    res = re.sub(r"いかにも仕事ができそうな雰囲気", "有能で頼もしい雰囲気", res)
+
+    return res
+
 
 def smooth_light_novel_prose(text: str) -> str:
     """
@@ -355,7 +419,9 @@ class SugoiTranslator:
         unit_map: List[Tuple[int, str]] = []
         for idx, text in enumerate(texts):
             if text and text.strip():
-                units = segment_japanese_paragraph(text, max_chars=250)
+                # Apply pre-processing grammar patcher to resolve pro-drop and zero-anaphora
+                patched_text = patch_japanese_grammar(text)
+                units = segment_japanese_paragraph(patched_text, max_chars=250)
                 for u in units:
                     unit_map.append((idx, u))
 
