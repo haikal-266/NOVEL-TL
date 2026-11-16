@@ -9,6 +9,7 @@ import re
 import uuid
 import threading
 import time
+import datetime
 from typing import Dict, List, Optional, Literal, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +73,7 @@ class GenerateRequest(BaseModel):
     url: str
     rangeType: Literal["current", "range", "all"]
     customRange: Optional[str] = None  # e.g. "1-5" or "1,2,3"
-    mode: Literal["translated", "bilingual", "raw"] = "translated"
+    mode: Literal["translated", "bilingual", "raw", "audit"] = "translated"
     targetLang: Literal["en", "id"] = "en"
     forceTranslate: bool = False
 
@@ -88,6 +89,8 @@ class JobState(BaseModel):
     message: str = ""
     downloadUrl: Optional[str] = None
     filename: Optional[str] = None
+    auditUrl: Optional[str] = None
+    auditFilename: Optional[str] = None
     error: Optional[str] = None
     cancelled: bool = False
 
@@ -298,6 +301,51 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
     )
 
 
+def generate_audit_markdown(novel_info: Dict[str, Any], chapters: List[Dict[str, Any]], target_lang: str) -> str:
+    lines = []
+    title = novel_info.get("title_id") or novel_info.get("title_en") or novel_info.get("title", "Novel")
+    author = novel_info.get("author_id") or novel_info.get("author_en") or novel_info.get("author", "Unknown")
+    work_id = novel_info.get("work_id", "")
+    url = novel_info.get("url", "")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    lines.append(f"# AUDIT REPORT (TRILINGUAL): {title}\n")
+    lines.append(f"- **Author:** {author}")
+    lines.append(f"- **Work ID:** `{work_id}`")
+    lines.append(f"- **Source URL:** {url}")
+    lines.append(f"- **Generated At:** {now}")
+    lines.append(f"- **Total Chapters Audited:** {len(chapters)}")
+    lines.append("\n---\n")
+
+    for chap in chapters:
+        c_idx = chap.get("index", 0)
+        c_title_ja = chap.get("title_ja", "")
+        c_title_tl = chap.get("title_tl", "")
+        lines.append(f"## Chapter {c_idx}: {c_title_tl} ({c_title_ja})\n")
+
+        p_num = 1
+        for p in chap.get("paragraphs", []):
+            if p.get("is_blank"):
+                lines.append("\n* * *\n")
+                continue
+            ja = p.get("ja", "").strip()
+            en = p.get("en", "").strip()
+            tl = p.get("tl", "").strip()
+            if not ja and not en and not tl:
+                continue
+
+            lines.append(f"### [P{p_num:03d}]")
+            lines.append(f"* **JA (Asli)**: {ja}")
+            if en:
+                lines.append(f"* **EN (Sugoi)**: {en}")
+            lines.append(f"* **ID (VelTL)**: {tl}\n")
+            p_num += 1
+
+        lines.append("\n---\n")
+
+    return "\n".join(lines)
+
+
 def run_job_worker(job_id: str, req: GenerateRequest) -> None:
     job = JOBS[job_id]
     try:
@@ -469,9 +517,11 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             # Assemble full chapter data
             chap_paras = []
-            for p_info, tl_text in zip(paragraphs, final_translations):
+            for i, (p_info, tl_text) in enumerate(zip(paragraphs, final_translations)):
+                en_val = en_texts[i].strip() if ('en_texts' in locals() and i < len(en_texts)) else ""
                 chap_paras.append({
                     "ja": p_info["raw"],
+                    "en": en_val,
                     "tl": tl_text.strip(),
                     "is_blank": p_info["is_blank"]
                 })
@@ -542,6 +592,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         builder.build_and_save(final_file_path)
 
+        if req.mode == "audit":
+            audit_md_content = generate_audit_markdown(novel_info, epub_chapters, target_lang)
+            audit_filename = f"{clean_title}{chap_suffix} [Audit Report].md"
+            audit_path = os.path.join(output_dir, audit_filename)
+            with open(audit_path, "w", encoding="utf-8") as f:
+                f.write(audit_md_content)
+            job.auditFilename = audit_filename
+            job.auditUrl = f"/api/download/{audit_filename}"
+            print(f"[Server] Audit report saved: {audit_path}")
+
         if epub_chapters:
             job.chapterTitle = epub_chapters[-1].get("title_tl") or job.chapterTitle
 
@@ -605,9 +665,10 @@ def download_epub(filename: str):
         file_path = os.path.abspath(filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
+    media_type = "text/markdown; charset=utf-8" if filename.endswith(".md") else "application/epub+zip"
     return FileResponse(
         file_path,
-        media_type="application/epub+zip",
+        media_type=media_type,
         filename=filename
     )
 

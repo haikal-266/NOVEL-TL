@@ -213,7 +213,12 @@ class EPUBBuilder:
             title = self.novel_info.get("title", f"Novel {work_id}")
             author = self.novel_info.get("author", "Unknown Author")
             synopsis = self.novel_info.get("synopsis", "")
-            subtitle = "Bilingual Edition (Japanese & English)" if self.mode == "bilingual" else "Japanese Edition"
+            if self.mode == "audit":
+                subtitle = "Audit Edition (Trilingual: JA • EN • ID)"
+            elif self.mode == "bilingual":
+                subtitle = "Bilingual Edition (Japanese & English)"
+            else:
+                subtitle = "Japanese Edition"
 
         self.display_title = title
         self.display_author = author
@@ -247,7 +252,9 @@ class EPUBBuilder:
         url = self.novel_info.get("url", "")
         
         mode_desc = "English Translation" if self.target_lang == "en" else "Indonesian Translation"
-        if self.mode == "bilingual":
+        if self.mode == "audit":
+            mode_desc = "Audit Edition (Trilingual: JA • EN • ID)"
+        elif self.mode == "bilingual":
             mode_desc = "Bilingual Edition (Japanese & English)"
 
         source_name = "Syosetu (Shousetsuka ni Narou)" if ("syosetu.com" in url or self.novel_info.get("source") == "syosetu") else "Kakuyomu Original"
@@ -323,10 +330,13 @@ class EPUBBuilder:
                 cls = "dialogue" if is_diag else "story-p"
                 body_html.append(f'<p class="{cls}">{html.escape(ja_text)}</p>')
 
-            elif self.mode == "bilingual":
+            elif self.mode in ("bilingual", "audit"):
+                en_val = p.get("en", "").strip()
+                en_block = f'  <div class="en-text" style="font-size: 0.85em; color: #0284c7; line-height: 1.4; margin-bottom: 0.25em;"><strong>[EN]:</strong> {html.escape(en_val)}</div>' if (self.mode == "audit" and en_val) else ""
                 body_html.append(
                     f'<div class="bilingual-block">'
                     f'  <div class="ja-text">{html.escape(ja_text)}</div>'
+                    f'{en_block}'
                     f'  <div class="tl-text">{html.escape(tl_text or ja_text)}</div>'
                     f'</div>'
                 )

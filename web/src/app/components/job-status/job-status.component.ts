@@ -26,6 +26,13 @@ export class JobStatusComponent {
     return null;
   }
 
+  get auditFullUrl(): string | null {
+    if (this.job.auditFilename) {
+      return this.apiService.getDownloadUrl(this.job.auditFilename);
+    }
+    return null;
+  }
+
   onCancel(): void {
     if (this.job.status === 'running' || this.job.status === 'pending') {
       this.isCancelling = true;

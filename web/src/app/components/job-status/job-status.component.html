@@ -89,6 +89,17 @@
         <app-icon name="arrow-right" [size]="18" />
       </a>
 
+      @if (auditFullUrl) {
+        <a
+          [href]="auditFullUrl"
+          download
+          class="neo-btn w-full p-3 bg-[#FFC0AD] hover:bg-[#ffad95] text-black font-black text-center text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-black shadow-[2px_2px_0px_#000]"
+        >
+          <app-icon name="file" [size]="16" />
+          <span>DOWNLOAD AUDIT REPORT (.MD)</span>
+        </a>
+      }
+
       @if (job.filename) {
         <div class="neo-card-sm bg-white p-2.5 text-center flex items-center justify-center gap-2 border-2 border-black">
           <app-icon name="file" [size]="14" class="text-gray-600" />

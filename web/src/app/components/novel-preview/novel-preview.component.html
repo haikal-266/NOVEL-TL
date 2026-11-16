@@ -208,17 +208,17 @@
       <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
         EPUB Text Format
       </label>
-      <div class="grid grid-cols-2 gap-2.5">
+      <div class="grid grid-cols-3 gap-2">
         <!-- Clean Translated -->
         <div
           role="button"
           tabindex="0"
           (click)="setMode('translated')"
           [class.neo-card-active]="mode === 'translated'"
-          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
         >
           <p class="font-black text-xs text-[#1A1A1A]">100% Clean</p>
-          <p class="text-[9px] font-mono font-bold text-gray-500 mt-1">No Japanese Text</p>
+          <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">No Japanese</p>
         </div>
 
         <!-- Bilingual -->
@@ -227,10 +227,25 @@
           tabindex="0"
           (click)="setMode('bilingual')"
           [class.neo-card-active]="mode === 'bilingual'"
-          class="neo-card-sm p-2.5 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
         >
           <p class="font-black text-xs text-[#1A1A1A]">Bilingual</p>
-          <p class="text-[9px] font-mono font-bold text-gray-500 mt-1">JP + Translation</p>
+          <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">JP + Terjemahan</p>
+        </div>
+
+        <!-- Audit Mode (.md) -->
+        <div
+          role="button"
+          tabindex="0"
+          (click)="setMode('audit')"
+          [class.neo-card-active]="mode === 'audit'"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px] relative"
+        >
+          <span class="absolute -top-2 -right-1 bg-[#D7FF28] text-black text-[8px] font-black px-1.5 py-0.2 border border-black rounded shadow-[1px_1px_0px_#000]">
+            DEV
+          </span>
+          <p class="font-black text-xs text-[#1A1A1A]">Audit (.md)</p>
+          <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">JP+EN+ID</p>
         </div>
       </div>
     </div>
