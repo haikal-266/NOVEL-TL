@@ -12,11 +12,13 @@ import ctranslate2
 from transformers import MarianTokenizer
 from core.translators.id_naturalizer import smooth_indonesian_prose
 
-DEFAULT_MODEL_DIR = os.path.join(
+_base_models = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "models",
-    "marian_en_id"
+    "models"
 )
+DEFAULT_MODEL_DIR = os.path.join(_base_models, "veltl_id_model")
+if not os.path.isdir(DEFAULT_MODEL_DIR):
+    DEFAULT_MODEL_DIR = os.path.join(_base_models, "marian_en_id")
 
 
 class MarianIDTranslator:

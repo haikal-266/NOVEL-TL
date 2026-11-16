@@ -9,7 +9,7 @@ import re
 import uuid
 import threading
 import time
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -98,11 +98,19 @@ _sugoi_translator = None
 _id_translator = None
 _translator_lock = threading.Lock()
 
-def get_sugoi_translator() -> SugoiTranslator:
+def get_sugoi_translator(job: Optional[JobState] = None):
+    """
+    Returns the default Japanese-to-English translator:
+    Sugoi V4 CTranslate2 INT8 empowered with JapaneseGrammarPatcher,
+    pro-drop resolution, speech markers, and light novel prose smoothing.
+    """
     global _sugoi_translator
     with _translator_lock:
         if _sugoi_translator is None:
+            if job:
+                job.message = "Memuat engine Sugoi V4 + Grammar Patcher..."
             from core.translators.sugoi import SugoiTranslator
+            print("[Server] Using Sugoi V4 + Grammar Patcher as default JP->EN engine...")
             _sugoi_translator = SugoiTranslator()
         return _sugoi_translator
 
@@ -111,13 +119,13 @@ def get_id_translator(job: Optional[JobState] = None):
     with _translator_lock:
         if _id_translator is None:
             if job:
-                job.message = "Memuat engine MarianMT EN->ID CTranslate2 ke memori..."
+                job.message = "Memuat engine VelTL EN->ID CTranslate2 ke memori..."
                 job.progressPercent = 1
             from core.translators.marian_id import MarianIDTranslator
             _id_translator = MarianIDTranslator()
         return _id_translator
 
-def get_translator() -> SugoiTranslator:
+def get_translator() -> Any:
     return get_sugoi_translator()
 
 
@@ -415,8 +423,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             if target_lang == "id" and id_trans:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
-                # Step 1: JP -> EN via Sugoi V4 (Ultra fast, accurate anime/LN syntax)
-                job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi)..."
+                # Step 1: JP -> EN via Sugoi V4 + JapaneseGrammarPatcher
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi + Patcher)..."
                 en_title = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
                 en_texts = sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
 

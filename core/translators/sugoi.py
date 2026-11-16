@@ -179,6 +179,8 @@ LIGHT_NOVEL_PROSE_IDIOMS = [
     # Physical reactions & gestures
     (r"\bmade a nodding motion\b", "nodded"),
     (r"\bmade a nod\b", "nodded"),
+    (r"\bgave a small nod\b", "nodded lightly"),
+    (r"\bgave a nod\b", "nodded"),
     (r"\bnodded his head\b", "nodded"),
     (r"\bnodded her head\b", "nodded"),
     (r"\bnodded their head\b", "nodded"),
@@ -273,13 +275,15 @@ def patch_japanese_grammar(text: str) -> str:
         res
     )
 
-    # 2. Omitted first-person reflection clauses (e.g. 目覚めた後に感じたこと -> 私が目覚めた後に感じたこと)
-    # Prevents Sugoi from guessing 'she' instead of narrator 'I'
+    # 2. Omitted first-person reflection and narrator action clauses
+    # Prevents Sugoi from guessing 'she' / 'he' instead of narrator 'I'
     res = re.sub(
         r"^([長い]*[眠休]りから[目覚起]めた後[でに]感じたこと)",
         r"私が\1",
         res
     )
+    narrator_action_pat = r"(^|[。！？\n]\s*)((小さく|大きく|深く|静かに|そっと|ゆっくり)?(頷[いて]|首を[振縦横]|息を[吸吐呑]|声を出そ|目を開[けい]|目を閉[じい]|口を開[けい]|問いかけ|尋ね))"
+    res = re.sub(narrator_action_pat, r"\1私が\2", res)
 
     # 3. Japanese idioms that confuse NMT into bizarre literalisms
     # お腹の虫の音 (stomach bug) -> お腹が鳴る音 (stomach rumbling)

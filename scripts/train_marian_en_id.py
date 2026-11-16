@@ -26,7 +26,7 @@ except Exception:
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORPUS_PATH = os.path.join(PROJECT_ROOT, "data", "en_id_gold_corpus.jsonl")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "output_marian_en_id")
-TARGET_CT2_DIR = os.path.join(PROJECT_ROOT, "models", "marian_en_id")
+TARGET_CT2_DIR = os.path.join(PROJECT_ROOT, "models", "veltl_id_model")
 
 
 def prepare_dataset_splits(corpus_path: str, val_size: int = 1500):

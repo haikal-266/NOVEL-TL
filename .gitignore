@@ -25,6 +25,7 @@ data/jp_en_split/
 data/*.epub
 output_*/
 *.epub
+veltl/
 
 # --- Python ---
 __pycache__/
