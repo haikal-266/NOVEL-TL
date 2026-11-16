@@ -55,6 +55,9 @@ IDIOM_REPLACEMENTS = [
     (r"\bsuara perut (saya|aku) bug\b", "suara perutku yang keroncongan"),
     (r"\bperut (saya|aku) bug\b", "perutku yang keroncongan"),
     (r"\bsuara perut (saya|aku) menggeram\b", "suara perutku yang keroncongan"),
+    (r"\bsuara perutku menggeram\b", "suara perutku yang keroncongan"),
+    (r"\bmengisyaratkan rasa laparku\b", "menandakan rasa lapar"),
+    (r"\bmengisyaratkan rasa lapar aku\b", "menandakan rasa lapar"),
     (r"\bkemalasan tubuh (saya|aku)\b", "rasa lemas yang melanda tubuhku"),
     (r"\blangit-langit anorganik\b", "langit-langit rumah sakit yang kaku dan dingin"),
     (r"\bbeban selimut pada (saya|aku)\b", "beratnya selimut yang menimpaku"),
@@ -75,6 +78,9 @@ IDIOM_REPLACEMENTS = [
     (r"\bmangkuk kedua dilarang\b", "tidak boleh nambah porsi"),
     
     # Staff & Social Interaction
+    (r"\b(ia\s+)?memiliki (kemampuan dan )?udara yang (berbakat dan )?dapat diandalkan tentang (dirinya|dia)\b", "ia memancarkan aura pria yang cakap dan dapat diandalkan"),
+    (r"\bmemiliki udara yang berbakat dan dapat diandalkan tentang dia\b", "memancarkan aura pria yang cakap dan dapat diandalkan"),
+    (r"\budara yang berbakat dan dapat diandalkan tentang dia\b", "aura pria yang cakap dan dapat diandalkan"),
     (r"\bmemiliki kemampuan dan udara yang dapat diandalkan tentang dirinya\b", "memancarkan aura pria yang cakap dan dapat diandalkan"),
     (r"\bmemiliki udara yang dapat diandalkan tentang dirinya\b", "memancarkan aura yang dapat diandalkan"),
     (r"\bmemiliki udara tentang dirinya yang membuatnya tampak seperti dia bisa melakukan pekerjaannya\b", "memancarkan kesan pria yang sangat cakap dalam pekerjaannya"),
@@ -170,7 +176,7 @@ def apply_persona_lock(text: str, default_pronoun: str = "aku") -> str:
             p = re.sub(r'\bsaya\b', 'aku', p)
 
             # Smooth Indonesian possessive enclitics (-ku)
-            p = re.sub(r'\b(pikiran|impian|tubuh|perut|mulut|mata|tangan|suara|pertanyaan|hati|hidup|makan|makanan)\s+aku\b', r'\1ku', p, flags=re.IGNORECASE)
+            p = re.sub(r'\b(pikiran|impian|tubuh|perut|mulut|mata|tangan|suara|pertanyaan|hati|hidup|makan|makanan|lapar|rasa lapar)\s+aku\b', r'\1ku', p, flags=re.IGNORECASE)
             p = re.sub(r'\bmenutupi\s+aku\b', 'menutupiku', p, flags=re.IGNORECASE)
             processed.append(p)
 
@@ -191,12 +197,14 @@ def smooth_indonesian_prose(text: str) -> str:
     for pattern, replacement in IDIOM_REPLACEMENTS:
         res = re.sub(pattern, replacement, res, flags=re.IGNORECASE)
 
-    # 3. Clean double spaces or punctuation glitches
+    # 3. Clean double spaces, double dots, or punctuation glitches
+    res = re.sub(r"\.\.+", ".", res)
     res = re.sub(r"\s+", " ", res).strip()
     res = re.sub(r"\s+([,.\?!;:\"'])", r"\1", res)
     res = re.sub(r"([\"'\(])\s+", r"\1", res)
 
-    # 4. Capitalize start of sentence if needed
+    # 4. Capitalize start of sentence and sentences following a period
+    res = re.sub(r'(\.\s+)([a-z])', lambda m: m.group(1) + m.group(2).upper(), res)
     if res and res[0].islower():
         res = res[0].upper() + res[1:]
 
