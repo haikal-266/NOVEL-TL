@@ -476,54 +476,56 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             selected_indices = sorted(list(indices_set)) or [1]
 
         target_lang = getattr(req, "targetLang", "en") or "en"
-        engine = getattr(req, "engine", "gemini") or "gemini"
+        # STRICT ARCHITECTURAL RULE:
+        # JP -> EN must NEVER use Gemini. Sugoi V4 (local CTranslate2 INT8) is 100% offline, specialized, and uses 0 API quota.
+        # Gemini Flash is strictly reserved for JP -> ID.
+        if target_lang == "en":
+            engine = "sugoi"
+        else:
+            engine = getattr(req, "engine", "gemini") or "gemini"
         force_translate = getattr(req, "forceTranslate", False) or False
 
         # Set cache flavor
-        if engine == "gemini":
-            if req.mode == "audit":
-                cache_flavor = f"gemini_audit_{target_lang}"
-            elif target_lang == "id":
-                cache_flavor = "gemini_id"
-            else:
-                cache_flavor = "gemini_en"
+        if target_lang == "en":
+            cache_flavor = "sugoi_audit_en" if req.mode == "audit" else "sugoi_en"
         else:
-            if req.mode == "audit":
-                cache_flavor = f"bridge_audit_{target_lang}"
-            elif target_lang == "id":
-                cache_flavor = "bridge_id"
+            if engine == "gemini":
+                cache_flavor = "gemini_audit_id" if req.mode == "audit" else "gemini_id"
             else:
-                cache_flavor = "sugoi_en"
+                cache_flavor = "bridge_audit_id" if req.mode == "audit" else "bridge_id"
 
         job.totalChapters = len(selected_indices)
-        if engine == "gemini":
-            job_desc = "GEMINI FLASH JP->ID (LITERARY)" if target_lang == "id" else "GEMINI FLASH JP->EN"
+        if target_lang == "en":
+            job_desc = "OFFLINE JP->EN (SUGOI V4)"
+        elif engine == "gemini":
+            job_desc = "GEMINI FLASH JP->ID (LITERARY)"
         else:
-            job_desc = "OFFLINE BRIDGE JP->EN->ID" if target_lang == "id" else "OFFLINE JP->EN (SUGOI)"
+            job_desc = "OFFLINE BRIDGE JP->EN->ID"
         job.message = f"Preparing {job.totalChapters} chapters for translation ({job_desc})..."
 
         # Initialize translators
-        if engine == "gemini":
+        if target_lang == "en":
+            gemini = None
+            sugoi = get_sugoi_translator()
+            id_trans = None
+        elif engine == "gemini":
             gemini = get_gemini_instance(job=job)
-            sugoi = get_sugoi_translator() if (req.mode == "audit" and target_lang == "id") else None
+            sugoi = get_sugoi_translator()  # Keep offline Sugoi available for novel metadata & audit mode EN texts
             id_trans = None
         else:
             gemini = None
             sugoi = get_sugoi_translator()
-            id_trans = get_id_translator(job=job) if target_lang == "id" else None
+            id_trans = get_id_translator(job=job)
 
         # Translate metadata if not present (or if forceTranslate is requested)
         title_meta_key = f"title_{target_lang}"
         author_meta_key = f"author_{target_lang}"
         synopsis_meta_key = f"synopsis_{target_lang}"
 
+        # Light novel conventions: Title and Author in English always use offline Sugoi (zero Gemini quota)
         if force_translate or not novel_info.get(title_meta_key) or not novel_info.get("title_en") or "I'll do everything" in novel_info.get(title_meta_key, ""):
-            if engine == "gemini":
-                title_en = gemini.translate_single(clean_title_for_translation(novel_info["title"]), target_lang="en")
-            else:
-                title_en = translate_novel_title(novel_info["title"], sugoi)
+            title_en = translate_novel_title(novel_info["title"], sugoi or get_sugoi_translator())
             novel_info["title_en"] = title_en
-            # Keep novel title in English as standard light novel reading convention
             novel_info[title_meta_key] = title_en
             novel_info["title_id"] = title_en
 
@@ -531,12 +533,9 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             raw_author = novel_info["author"].strip()
             # Clean conversational endings like です (e.g. バターです -> Butter)
             clean_author_ja = re.sub(r'です$', '', raw_author) if len(raw_author) > 2 else raw_author
-            if engine == "gemini":
-                author_en = gemini.translate_single(clean_author_ja, target_lang="en") or raw_author
-            else:
-                author_en = clean_english_text(sugoi.translate_single(clean_author_ja)).replace("♪", "").replace("It's", "").strip() or raw_author
+            author_sugoi = sugoi or get_sugoi_translator()
+            author_en = clean_english_text(author_sugoi.translate_single(clean_author_ja)).replace("♪", "").replace("It's", "").strip() or raw_author
             novel_info["author_en"] = author_en
-            # Pen names should retain their proper English/Romaji form, not literally translated to Indonesian
             novel_info[author_meta_key] = author_en
 
         cache.save_novel_info(novel_info)
@@ -561,7 +560,10 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             job.chapterTitle = ep_title_ja
 
             # Check cache (skip if forceTranslate is true)
-            cached_ep = None if force_translate else cache.load_episode(ep_id, cache_flavor)
+            cached_ep = None if force_translate else (
+                cache.load_episode(ep_id, cache_flavor)
+                or (cache.load_episode(ep_id, "sugoi_en") if target_lang == "en" else None)
+            )
             if cached_ep and req.mode == "audit":
                 if target_lang == "id":
                     has_distinct_id = any(
@@ -600,102 +602,92 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             chap_weight = 1.0 / job.totalChapters
             chap_base = (chap_i - 1) / job.totalChapters
 
-            if engine == "gemini":
-                # ====== GOOGLE GEMINI FLASH (Free Cloud API) ======
+            if target_lang == "en":
+                # ====== STRICTLY JP -> EN VIA SUGOI V4 (100% OFFLINE) ======
+                job.message = f"Chapter {chap_i}/{job.totalChapters}: Translating JP -> EN (Sugoi V4)..."
+                en_title, title_tl = translate_chapter_title(ep_title_ja, sugoi, id_trans=None, work_id=work_id, chap_index=idx)
+                job.chapterTitle = title_tl
+
+                def on_en_progress(done: int, total: int) -> None:
+                    job.paragraphsDone = done
+                    current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
+                    job.progressPercent = min(90, int(current_pct))
+
+                en_texts = sugoi.translate_texts(
+                    clean_texts,
+                    batch_size=16,
+                    progress_cb=on_en_progress,
+                    work_id=work_id
+                )
+                final_translations = [clean_english_text(t) for t in en_texts]
+
+            elif engine == "gemini":
+                # ====== GOOGLE GEMINI FLASH (Free Cloud API) - JP -> ID ONLY ======
                 def on_gemini_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
                     current_pct = (chap_base + (done / total if total else 1.0) * chap_weight) * 90
                     job.progressPercent = min(90, int(current_pct))
 
-                if target_lang == "id":
-                    use_offline_fallback = False
-                    try:
-                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Menerjemahkan JP -> ID (Gemini Flash)..."
-                        en_title, title_tl = translate_chapter_title_gemini(ep_title_ja, gemini, target_lang="id", work_id=work_id, chap_index=idx)
-                        job.chapterTitle = title_tl
+                use_offline_fallback = False
+                try:
+                    job.message = f"Chapter {chap_i}/{job.totalChapters}: Menerjemahkan JP -> ID (Gemini Flash)..."
+                    en_title, title_tl = translate_chapter_title_gemini(ep_title_ja, gemini, target_lang="id", work_id=work_id, chap_index=idx)
+                    job.chapterTitle = title_tl
 
-                        id_texts = gemini.translate_texts(
-                            clean_texts,
-                            target_lang="id",
-                            chunk_size=25,
-                            progress_cb=on_gemini_progress,
-                            work_id=work_id,
-                            ep_id=ep_id,
-                            chap_index=idx
-                        )
-                        final_translations = id_texts
+                    id_texts = gemini.translate_texts(
+                        clean_texts,
+                        target_lang="id",
+                        chunk_size=25,
+                        progress_cb=on_gemini_progress,
+                        work_id=work_id,
+                        ep_id=ep_id,
+                        chap_index=idx
+                    )
+                    final_translations = id_texts
 
-                        # If audit mode, also translate English for comparison
-                        if req.mode == "audit":
-                            job.message = f"Chapter {chap_i}/{job.totalChapters}: Menyiapkan teks EN untuk Audit Report..."
-                            if sugoi:
-                                en_texts = sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
-                            else:
-                                en_texts = gemini.translate_texts(clean_texts, target_lang="en", chunk_size=25, work_id=work_id, ep_id=ep_id, chap_index=idx)
-                            
-                            # Enrich dataset with EN translation
-                            trilingual = [
-                                {
-                                    "ja": clean_texts[i].strip(),
-                                    "id": id_texts[i].strip(),
-                                    "en": en_texts[i].strip(),
-                                    "work_id": work_id,
-                                    "chapter_id": ep_id,
-                                    "chapter_index": idx,
-                                    "p_index": i + 1,
-                                    "model": "gemini-flash"
-                                }
-                                for i in range(len(clean_texts))
-                                if clean_texts[i].strip() and id_texts[i].strip()
-                            ]
-                            if trilingual:
-                                from core.dataset_logger import get_dataset_logger
-                                get_dataset_logger().log_pairs(trilingual)
-                        else:
-                            en_texts = [""] * len(clean_texts)
+                    # If audit mode, strictly use Sugoi V4 for English comparison (NEVER Gemini)
+                    if req.mode == "audit":
+                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Menyiapkan teks EN untuk Audit Report..."
+                        audit_sugoi = sugoi or get_sugoi_translator()
+                        en_texts = audit_sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
+                        
+                        # Enrich dataset with EN translation
+                        trilingual = [
+                            {
+                                "ja": clean_texts[i].strip(),
+                                "id": id_texts[i].strip(),
+                                "en": en_texts[i].strip(),
+                                "work_id": work_id,
+                                "chapter_id": ep_id,
+                                "chapter_index": idx,
+                                "p_index": i + 1,
+                                "model": "gemini-flash"
+                            }
+                            for i in range(len(clean_texts))
+                            if clean_texts[i].strip() and id_texts[i].strip()
+                        ]
+                        if trilingual:
+                            from core.dataset_logger import get_dataset_logger
+                            get_dataset_logger().log_pairs(trilingual)
+                    else:
+                        en_texts = [""] * len(clean_texts)
 
-                    except Exception as gemini_err:
-                        print(f"[Server Warning] Gemini translation error ({gemini_err}). Otomatis beralih ke Offline VelTL...")
-                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Kuota Gemini habis/gagal, beralih ke Offline VelTL..."
-                        use_offline_fallback = True
+                except Exception as gemini_err:
+                    print(f"[Server Warning] Gemini translation error ({gemini_err}). Otomatis beralih ke Offline VelTL...")
+                    job.message = f"Chapter {chap_i}/{job.totalChapters}: Kuota Gemini habis/gagal, beralih ke Offline VelTL..."
+                    use_offline_fallback = True
 
-                    if use_offline_fallback:
-                        # Graceful automatic fallback to offline Sugoi + MarianID
-                        offline_sugoi = get_sugoi_translator()
-                        offline_id = get_id_translator(job=job)
-                        en_title, title_tl = translate_chapter_title(ep_title_ja, offline_sugoi, id_trans=offline_id, work_id=work_id, chap_index=idx)
-                        job.chapterTitle = title_tl
-                        en_texts = offline_sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
-                        id_texts = offline_id.translate_en_to_id(en_texts, ja_texts=clean_texts, batch_size=32, progress_cb=on_gemini_progress, work_id=work_id)
-                        final_translations = id_texts
+                if use_offline_fallback:
+                    # Graceful automatic fallback to offline Sugoi + MarianID
+                    offline_sugoi = sugoi or get_sugoi_translator()
+                    offline_id = get_id_translator(job=job)
+                    en_title, title_tl = translate_chapter_title(ep_title_ja, offline_sugoi, id_trans=offline_id, work_id=work_id, chap_index=idx)
+                    job.chapterTitle = title_tl
+                    en_texts = offline_sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
+                    id_texts = offline_id.translate_en_to_id(en_texts, ja_texts=clean_texts, batch_size=32, progress_cb=on_gemini_progress, work_id=work_id)
+                    final_translations = id_texts
 
-                else:
-                    # Target lang is EN
-                    try:
-                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Translating JP -> EN (Gemini Flash)..."
-                        en_title, title_tl = translate_chapter_title_gemini(ep_title_ja, gemini, target_lang="en", work_id=work_id, chap_index=idx)
-                        job.chapterTitle = title_tl
-
-                        en_texts = gemini.translate_texts(
-                            clean_texts,
-                            target_lang="en",
-                            chunk_size=25,
-                            progress_cb=on_gemini_progress,
-                            work_id=work_id,
-                            ep_id=ep_id,
-                            chap_index=idx
-                        )
-                        final_translations = en_texts
-                    except Exception as gemini_err:
-                        print(f"[Server Warning] Gemini EN error ({gemini_err}). Fallback ke Sugoi V4...")
-                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Gemini offline/quota, fallback ke Sugoi V4..."
-                        offline_sugoi = get_sugoi_translator()
-                        en_title, title_tl = translate_chapter_title(ep_title_ja, offline_sugoi, id_trans=None, work_id=work_id, chap_index=idx)
-                        job.chapterTitle = title_tl
-                        en_texts = offline_sugoi.translate_texts(clean_texts, batch_size=16, progress_cb=on_gemini_progress, work_id=work_id)
-                        final_translations = [clean_english_text(t) for t in en_texts]
-
-            elif target_lang == "id" and id_trans:
+            elif id_trans:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 + JapaneseGrammarPatcher
                 job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi + Patcher)..."
@@ -724,7 +716,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 final_translations = id_texts
 
             else:
-                # ====== STANDARD JP -> EN (Sugoi V4) ======
+                # Fallback to Sugoi V4
                 job.message = f"Translating Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
                 en_title, title_tl = translate_chapter_title(ep_title_ja, sugoi, id_trans=None, work_id=work_id, chap_index=idx)
                 job.chapterTitle = title_tl

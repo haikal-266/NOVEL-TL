@@ -56,6 +56,7 @@ export class NovelPreviewComponent {
       customRange: this.rangeType === 'range' ? this.customRange.trim() : undefined,
       mode: this.mode,
       targetLang: this.targetLang,
+      engine: this.targetLang === 'en' ? 'offline' : 'gemini',
       forceTranslate: this.forceTranslate
     };
     this.startGenerate.emit(request);
