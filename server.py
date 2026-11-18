@@ -385,37 +385,46 @@ def generate_audit_markdown(novel_info: Dict[str, Any], chapters: List[Dict[str,
     url = novel_info.get("url", "")
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    lines.append(f"# AUDIT REPORT (TRILINGUAL): {title}\n")
+    lang_desc = "ENGLISH" if target_lang.lower().startswith("en") else "INDONESIAN"
+    lines.append(f"# {title}\n")
     lines.append(f"- **Author:** {author}")
     lines.append(f"- **Work ID:** `{work_id}`")
     lines.append(f"- **Source URL:** {url}")
+    lines.append(f"- **Language:** {lang_desc}")
     lines.append(f"- **Generated At:** {now}")
-    lines.append(f"- **Total Chapters Audited:** {len(chapters)}")
+    lines.append(f"- **Total Chapters:** {len(chapters)}")
     lines.append("\n---\n")
 
     for chap in chapters:
         c_idx = chap.get("index", 0)
-        c_title_ja = chap.get("title_ja", "")
         c_title_tl = chap.get("title_tl", "")
-        lines.append(f"## Chapter {c_idx}: {c_title_tl} ({c_title_ja})\n")
+        lines.append(f"## Chapter {c_idx}: {c_title_tl}\n")
 
         p_num = 1
         for p in chap.get("paragraphs", []):
             if p.get("is_blank"):
                 lines.append("\n* * *\n")
                 continue
-            ja = p.get("ja", "").strip()
             en = p.get("en", "").strip()
             tl = p.get("tl", "").strip()
-            if not ja and not en and not tl:
-                continue
 
-            lines.append(f"### [P{p_num:03d}]")
-            lines.append(f"* **JA (Asli)**: {ja}")
-            if en:
-                lines.append(f"* **EN (Sugoi)**: {en}")
-            lines.append(f"* **ID (VelTL)**: {tl}\n")
-            p_num += 1
+            if target_lang.lower().startswith("en"):
+                text = en or tl
+                if text:
+                    lines.append(f"[p{p_num:03d}] {text}\n")
+                    p_num += 1
+            else:
+                # Target is Indonesian
+                if en and tl and en != tl:
+                    # Clean parallel EN -> ID (MarianMT gold dataset format)
+                    lines.append(f"### [p{p_num:03d}]")
+                    lines.append(f"* **EN**: {en}")
+                    lines.append(f"* **ID**: {tl}\n")
+                else:
+                    text = tl or en
+                    if text:
+                        lines.append(f"[p{p_num:03d}] {text}\n")
+                p_num += 1
 
         lines.append("\n---\n")
 
@@ -473,17 +482,14 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         # Set cache flavor
         if engine == "gemini":
             if req.mode == "audit":
-                target_lang = "id"
-                cache_flavor = "gemini_audit"
+                cache_flavor = f"gemini_audit_{target_lang}"
             elif target_lang == "id":
                 cache_flavor = "gemini_id"
             else:
                 cache_flavor = "gemini_en"
         else:
-            # Audit mode is strictly trilingual (JA -> EN -> ID) for quality inspection
             if req.mode == "audit":
-                target_lang = "id"
-                cache_flavor = "bridge_id"
+                cache_flavor = f"bridge_audit_{target_lang}"
             elif target_lang == "id":
                 cache_flavor = "bridge_id"
             else:
@@ -499,7 +505,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         # Initialize translators
         if engine == "gemini":
             gemini = get_gemini_instance(job=job)
-            sugoi = get_sugoi_translator() if req.mode == "audit" else None
+            sugoi = get_sugoi_translator() if (req.mode == "audit" and target_lang == "id") else None
             id_trans = None
         else:
             gemini = None
@@ -557,14 +563,22 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             # Check cache (skip if forceTranslate is true)
             cached_ep = None if force_translate else cache.load_episode(ep_id, cache_flavor)
             if cached_ep and req.mode == "audit":
-                # Ensure the cache actually contains Indonesian translation, not old English fallback
-                has_distinct_id = any(
-                    p.get("tl") and p.get("en") and p.get("tl").strip() != p.get("en").strip()
-                    for p in cached_ep.get("paragraphs", [])
-                    if not p.get("is_blank")
-                )
-                if not has_distinct_id:
-                    cached_ep = None  # Invalidate old English cache and force generating proper Indonesian
+                if target_lang == "id":
+                    has_distinct_id = any(
+                        p.get("tl") and p.get("en") and p.get("tl").strip() != p.get("en").strip()
+                        for p in cached_ep.get("paragraphs", [])
+                        if not p.get("is_blank")
+                    )
+                    if not has_distinct_id:
+                        cached_ep = None  # Invalidate old English cache and force generating proper Indonesian
+                elif target_lang == "en":
+                    has_en = any(
+                        p.get("en") or p.get("tl")
+                        for p in cached_ep.get("paragraphs", [])
+                        if not p.get("is_blank")
+                    )
+                    if not has_en:
+                        cached_ep = None
 
             if cached_ep:
                 epub_chapters.append(cached_ep)
@@ -657,20 +671,29 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
                 else:
                     # Target lang is EN
-                    job.message = f"Chapter {chap_i}/{job.totalChapters}: Translating JP -> EN (Gemini Flash)..."
-                    en_title, title_tl = translate_chapter_title_gemini(ep_title_ja, gemini, target_lang="en", work_id=work_id, chap_index=idx)
-                    job.chapterTitle = title_tl
+                    try:
+                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Translating JP -> EN (Gemini Flash)..."
+                        en_title, title_tl = translate_chapter_title_gemini(ep_title_ja, gemini, target_lang="en", work_id=work_id, chap_index=idx)
+                        job.chapterTitle = title_tl
 
-                    en_texts = gemini.translate_texts(
-                        clean_texts,
-                        target_lang="en",
-                        chunk_size=25,
-                        progress_cb=on_gemini_progress,
-                        work_id=work_id,
-                        ep_id=ep_id,
-                        chap_index=idx
-                    )
-                    final_translations = en_texts
+                        en_texts = gemini.translate_texts(
+                            clean_texts,
+                            target_lang="en",
+                            chunk_size=25,
+                            progress_cb=on_gemini_progress,
+                            work_id=work_id,
+                            ep_id=ep_id,
+                            chap_index=idx
+                        )
+                        final_translations = en_texts
+                    except Exception as gemini_err:
+                        print(f"[Server Warning] Gemini EN error ({gemini_err}). Fallback ke Sugoi V4...")
+                        job.message = f"Chapter {chap_i}/{job.totalChapters}: Gemini offline/quota, fallback ke Sugoi V4..."
+                        offline_sugoi = get_sugoi_translator()
+                        en_title, title_tl = translate_chapter_title(ep_title_ja, offline_sugoi, id_trans=None, work_id=work_id, chap_index=idx)
+                        job.chapterTitle = title_tl
+                        en_texts = offline_sugoi.translate_texts(clean_texts, batch_size=16, progress_cb=on_gemini_progress, work_id=work_id)
+                        final_translations = [clean_english_text(t) for t in en_texts]
 
             elif target_lang == "id" and id_trans:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
@@ -798,7 +821,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         if req.mode == "audit":
             audit_md_content = generate_audit_markdown(novel_info, epub_chapters, target_lang)
-            audit_filename = f"{clean_title}{chap_suffix} [Audit Report].md"
+            lang_label = "EN Dataset" if target_lang.lower().startswith("en") else "ID Report"
+            audit_filename = f"{clean_title}{chap_suffix} [{lang_label}].md"
             audit_path = os.path.join(output_dir, audit_filename)
             with open(audit_path, "w", encoding="utf-8") as f:
                 f.write(audit_md_content)
