@@ -21,12 +21,12 @@
 
     <!-- Full English Title -->
     <h3 class="font-black text-sm sm:text-base leading-snug text-[#1A1A1A]">
-      {{ (targetLang === 'id' && novel.titleId) ? novel.titleId : (novel.titleEn || novel.titleJa) }}
+      {{ novel.titleEn || novel.titleJa }}
     </h3>
 
     <!-- Compact Meta Line -->
     <p class="text-[11px] font-mono text-gray-600 font-bold mt-1.5">
-      {{ (targetLang === 'id' && novel.authorId) ? novel.authorId : (novel.authorEn || novel.authorJa) }} &bull; ID: {{ novel.workId }}
+      {{ novel.authorEn || novel.authorJa }} &bull; ID: {{ novel.workId }}
     </p>
   </div>
 

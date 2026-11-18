@@ -40,6 +40,9 @@ export class NovelPreviewComponent {
 
   setMode(mode: TranslationMode): void {
     this.mode = mode;
+    if (mode === 'audit') {
+      this.targetLang = 'id';
+    }
   }
 
   setTargetLang(lang: TargetLanguage): void {

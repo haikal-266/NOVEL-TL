@@ -10,7 +10,7 @@ import uuid
 import threading
 import time
 import datetime
-from typing import Dict, List, Optional, Literal, Any
+from typing import Dict, List, Optional, Literal, Any, Tuple
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -160,6 +160,41 @@ def translate_novel_title(title_ja: str, sugoi: SugoiTranslator) -> str:
         return clean_english_text(sugoi.translate_single(clean_t)).replace("♪", "").strip()
 
 
+def translate_chapter_title(ep_title_ja: str, sugoi: Any, id_trans: Any = None, work_id: str = "", chap_index: int = 1) -> Tuple[str, str]:
+    """
+    Safely translates chapter titles while protecting numeric chapter markers.
+    Prevents numbers like '25' becoming 'I am 25 years old' or '49' becoming '59'.
+    """
+    clean_ja = (ep_title_ja or "").strip()
+    if not clean_ja:
+        return f"Chapter {chap_index}", f"Bab {chap_index}"
+
+    # Pure number title (e.g. "03", "25", "101")
+    if clean_ja.isdigit():
+        num = int(clean_ja)
+        return f"Chapter {num}", f"Bab {num}"
+
+    # Number prefix with separator (e.g. "49　秘密通路の探索" or "77: 魔鼠の謎")
+    m = re.match(r'^(\d+)[\s　:：\-_]*(.*)$', clean_ja)
+    if m:
+        num = m.group(1)
+        sub_ja = m.group(2).strip()
+        if not sub_ja:
+            return f"Chapter {num}", f"Bab {num}"
+        en_sub = clean_english_text(sugoi.translate_single(sub_ja, work_id=work_id))
+        if id_trans:
+            id_sub = id_trans.translate_single(en_sub, ja_text=sub_ja)
+            return f"Chapter {num}: {en_sub}", f"Bab {num}: {id_sub}"
+        return f"Chapter {num}: {en_sub}", f"Chapter {num}: {en_sub}"
+
+    # General title
+    en_title = clean_english_text(sugoi.translate_single(clean_ja, work_id=work_id)) or f"Chapter {chap_index}"
+    if id_trans:
+        id_title = id_trans.translate_single(en_title, ja_text=clean_ja) or f"Bab {chap_index}"
+        return en_title, id_title
+    return en_title, en_title
+
+
 def sanitize_filename(name: str) -> str:
     sanitized = re.sub(r'[\\/*?:"<>|]', "", name)
     sanitized = re.sub(r"\s+", " ", sanitized).strip()
@@ -289,10 +324,10 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
         currentEpisodeIndex=curr_idx,
         titleJa=novel_info.get("title", ""),
         titleEn=novel_info.get("title_en") or novel_info.get("title", ""),
-        titleId=novel_info.get("title_id"),
+        titleId=novel_info.get("title_en") or novel_info.get("title", ""),
         authorJa=novel_info.get("author", "Unknown Author"),
         authorEn=novel_info.get("author_en") or novel_info.get("author", "Unknown Author"),
-        authorId=novel_info.get("author_id"),
+        authorId=novel_info.get("author_en") or novel_info.get("author", "Unknown Author"),
         synopsis=novel_info.get("synopsis", ""),
         synopsisEn=novel_info.get("synopsis_en") or novel_info.get("synopsis", ""),
         url=novel_info.get("url", ""),
@@ -303,8 +338,8 @@ def inspect_novel(req: InspectRequest) -> NovelInspectResponse:
 
 def generate_audit_markdown(novel_info: Dict[str, Any], chapters: List[Dict[str, Any]], target_lang: str) -> str:
     lines = []
-    title = novel_info.get("title_id") or novel_info.get("title_en") or novel_info.get("title", "Novel")
-    author = novel_info.get("author_id") or novel_info.get("author_en") or novel_info.get("author", "Unknown")
+    title = novel_info.get("title_en") or novel_info.get("title_id") or novel_info.get("title", "Novel")
+    author = novel_info.get("author_en") or novel_info.get("author_id") or novel_info.get("author", "Unknown")
     work_id = novel_info.get("work_id", "")
     url = novel_info.get("url", "")
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -392,7 +427,12 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
         target_lang = getattr(req, "targetLang", "en") or "en"
         force_translate = getattr(req, "forceTranslate", False) or False
-        if target_lang == "id":
+
+        # Audit mode is strictly trilingual (JA -> EN -> ID) for quality inspection
+        if req.mode == "audit":
+            target_lang = "id"
+            cache_flavor = "bridge_id"
+        elif target_lang == "id":
             cache_flavor = "bridge_id"
         else:
             cache_flavor = "sugoi_en"
@@ -410,21 +450,21 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
         author_meta_key = f"author_{target_lang}"
         synopsis_meta_key = f"synopsis_{target_lang}"
 
-        if force_translate or not novel_info.get(title_meta_key) or "I'll do everything" in novel_info.get(title_meta_key, ""):
+        if force_translate or not novel_info.get(title_meta_key) or not novel_info.get("title_en") or "I'll do everything" in novel_info.get(title_meta_key, ""):
             title_en = translate_novel_title(novel_info["title"], sugoi)
             novel_info["title_en"] = title_en
-            if target_lang == "id" and id_trans:
-                novel_info[title_meta_key] = id_trans.translate_single(title_en)
-            else:
-                novel_info[title_meta_key] = title_en
+            # Keep novel title in English as standard light novel reading convention
+            novel_info[title_meta_key] = title_en
+            novel_info["title_id"] = title_en
 
         if force_translate or not novel_info.get(author_meta_key):
-            author_en = sugoi.translate_single(novel_info["author"]).replace("♪", "").strip()
+            raw_author = novel_info["author"].strip()
+            # Clean conversational endings like です (e.g. バターです -> Butter)
+            clean_author_ja = re.sub(r'です$', '', raw_author) if len(raw_author) > 2 else raw_author
+            author_en = clean_english_text(sugoi.translate_single(clean_author_ja)).replace("♪", "").replace("It's", "").strip() or raw_author
             novel_info["author_en"] = author_en
-            if target_lang == "id" and id_trans:
-                novel_info[author_meta_key] = id_trans.translate_single(author_en)
-            else:
-                novel_info[author_meta_key] = author_en
+            # Pen names should retain their proper English/Romaji form, not literally translated to Indonesian
+            novel_info[author_meta_key] = author_en
 
         cache.save_novel_info(novel_info)
 
@@ -449,6 +489,16 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
             # Check cache (skip if forceTranslate is true)
             cached_ep = None if force_translate else cache.load_episode(ep_id, cache_flavor)
+            if cached_ep and req.mode == "audit":
+                # Ensure the cache actually contains Indonesian translation, not old English fallback
+                has_distinct_id = any(
+                    p.get("tl") and p.get("en") and p.get("tl").strip() != p.get("en").strip()
+                    for p in cached_ep.get("paragraphs", [])
+                    if not p.get("is_blank")
+                )
+                if not has_distinct_id:
+                    cached_ep = None  # Invalidate old English cache and force generating proper Indonesian
+
             if cached_ep:
                 epub_chapters.append(cached_ep)
                 job.chapterTitle = cached_ep.get("title_tl") or ep_title_ja
@@ -473,7 +523,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 # ====== BRIDGE METHOD (JP -> EN -> ID) ======
                 # Step 1: JP -> EN via Sugoi V4 + JapaneseGrammarPatcher
                 job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 1 JP -> EN (Sugoi + Patcher)..."
-                en_title = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
+                en_title, title_tl = translate_chapter_title(ep_title_ja, sugoi, id_trans=id_trans, work_id=work_id, chap_index=idx)
+                job.chapterTitle = title_tl
                 en_texts = sugoi.translate_texts(clean_texts, batch_size=16, work_id=work_id)
 
                 if job.cancelled:
@@ -481,8 +532,6 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
 
                 # Step 2: EN -> ID via MarianMT INT8 (Ultra fast, zero hallucination, naturalized)
                 job.message = f"Chapter {chap_i}/{job.totalChapters}: Tahap 2 EN -> ID (MarianMT INT8)..."
-                title_tl = id_trans.translate_single(en_title, ja_text=ep_title_ja)
-                job.chapterTitle = title_tl
 
                 def on_id_progress(done: int, total: int) -> None:
                     job.paragraphsDone = done
@@ -501,7 +550,7 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
             else:
                 # ====== STANDARD JP -> EN (Sugoi V4) ======
                 job.message = f"Translating Chapter {chap_i}/{job.totalChapters}: {ep_title_ja}"
-                title_tl = clean_english_text(sugoi.translate_single(ep_title_ja, work_id=work_id))
+                en_title, title_tl = translate_chapter_title(ep_title_ja, sugoi, id_trans=None, work_id=work_id, chap_index=idx)
                 job.chapterTitle = title_tl
 
                 def on_en_progress(done: int, total: int) -> None:
@@ -564,8 +613,8 @@ def run_job_worker(job_id: str, req: GenerateRequest) -> None:
                 paragraphs=chap["paragraphs"]
             )
 
-        # Output filename
-        lang_title = novel_info.get(title_meta_key) or novel_info.get("title_en", "Novel")
+        # Output filename (Always prefer clean English title for novel naming)
+        lang_title = novel_info.get("title_en") or novel_info.get(title_meta_key) or "Novel"
         clean_title = sanitize_filename(lang_title)
         clean_title = re.sub(r"(\s*-\s*)+", " - ", clean_title)
         if " - " in clean_title:

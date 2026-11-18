@@ -14,7 +14,7 @@ import gc
 from typing import List, Dict, Tuple, Optional, Callable, Set
 import ctranslate2
 from transformers import MarianTokenizer
-from core.translators.id_naturalizer import smooth_indonesian_prose
+from core.translators.id_naturalizer import smooth_indonesian_prose, naturalize_indonesian_batch
 from core.glossary import get_glossary_manager
 
 _base_models = os.path.join(
@@ -25,7 +25,36 @@ DEFAULT_MODEL_DIR = os.path.join(_base_models, "veltl_id_model")
 if not os.path.isdir(DEFAULT_MODEL_DIR):
     DEFAULT_MODEL_DIR = os.path.join(_base_models, "marian_en_id")
 
-STOP_PREPOSITIONS = {"In", "To", "From", "With", "And", "Of", "At", "For", "By", "On", "About"}
+ENGLISH_STOPWORDS = {
+    # Articles
+    "A", "An", "The",
+    # Pronouns & determiners
+    "I", "You", "He", "She", "It", "We", "They", "Me", "Him", "Her", "Us", "Them",
+    "My", "Your", "His", "Its", "Our", "Their", "Mine", "Yours", "Ours", "Theirs",
+    "Myself", "Himself", "Herself", "Itself", "Ourselves", "Themselves",
+    "This", "That", "These", "Those", "What", "Which", "Who", "Whom", "Whose",
+    # Auxiliary & common verbs
+    "Be", "Is", "Am", "Are", "Was", "Were", "Been", "Being",
+    "Have", "Has", "Had", "Do", "Does", "Did",
+    "Can", "Could", "Shall", "Should", "Will", "Would", "May", "Might", "Must",
+    # Conjunctions & Prepositions
+    "In", "To", "From", "With", "And", "Of", "At", "For", "By", "On", "About",
+    "Against", "Between", "Into", "Through", "During", "Before", "After",
+    "Above", "Below", "Up", "Down", "Out", "Off", "Over", "Under", "Again",
+    "Further", "Then", "Once", "Here", "There", "When", "Where", "Why", "How",
+    "All", "Any", "Both", "Each", "Few", "More", "Most", "Other", "Some", "Such",
+    "No", "Nor", "Not", "Only", "Own", "Same", "So", "Than", "Too", "Very",
+    "Just", "Now", "But", "Because", "As", "Until", "While", "Although", "If",
+    "Even", "Also", "Still", "Yet", "Well", "Back", "Come", "Go", "See", "Say", "Look",
+    # Common fantasy/title words that shouldn't be masked on their own
+    "Lord", "Lady", "Sir", "Miss", "Mr", "Mrs", "Madam", "Master", "High", "Grand",
+    "Great", "Little", "Old", "Young", "Good", "Bad", "True", "False", "New",
+    "Vampire", "Goblin", "Dragon", "Demon", "Hero", "King", "Queen", "Prince", "Princess",
+    # Days & Months
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+    "January", "February", "March", "April", "May", "June", "July", "August",
+    "September", "October", "November", "December"
+}
 
 
 class UniversalEntityShield:
@@ -33,6 +62,11 @@ class UniversalEntityShield:
     Protects proper nouns, character names, and fantasy terminology from BPE subword
     corruption and hallucinated misspellings (e.g. preventing 'Honda' -> 'Heonda').
     Uses Marian-invariant tags (TAGA, TAGB...) that survive translation untouched.
+    Equipped with:
+    - Comprehensive English Stopword Blacklist (prevents 'The'/'Was'/'But' masking disaster)
+    - Automatic Katakana-to-Proper-Noun Alignment (detects characters across any novel)
+    - Strict Case-Sensitive Exact Masking
+    - Fail-safe Katakana Hallucination & Subtitle Tag Scrubber
     """
 
     def __init__(self, explicit_names: Optional[List[str]] = None):
@@ -40,30 +74,49 @@ class UniversalEntityShield:
         self.tag_map: Dict[str, str] = {}
         self.reverse_map: Dict[str, str] = {}
 
-    def extract_names_from_texts(self, texts: List[str]) -> None:
+    def extract_names_from_texts(self, texts: List[str], ja_texts: Optional[List[str]] = None) -> None:
         found: Set[str] = set(self.explicit_names)
-        # Match Japanese honorific suffixed names (e.g. 'Honda Minako-san', 'Iibashi-san')
-        pattern = r"\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)-(?:san|kun|chan|sama|senpai|sensei|dono)\b"
+
+        # 1. Match Japanese honorific suffixed names in English (e.g. 'Honda-san', 'Cerlis-sama')
+        pattern_honorific = r"\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)-(?:san|kun|chan|sama|senpai|sensei|dono)\b"
         for t in texts:
             if not t:
                 continue
-            for match in re.finditer(pattern, t):
+            for match in re.finditer(pattern_honorific, t):
                 name = match.group(1).strip()
                 parts = name.split()
-                if parts and parts[0] in STOP_PREPOSITIONS:
+                if parts and parts[0] in ENGLISH_STOPWORDS:
                     parts = parts[1:]
                 if not parts:
                     continue
                 clean_name = " ".join(parts)
-                found.add(clean_name)
-                # If compound name, protect individual parts if > 2 chars
+                if clean_name not in ENGLISH_STOPWORDS:
+                    found.add(clean_name)
+                # If compound name, protect individual parts if valid
                 if len(parts) > 1:
                     for p in parts:
-                        if len(p) > 2 and p not in STOP_PREPOSITIONS:
+                        if len(p) >= 3 and p not in ENGLISH_STOPWORDS:
                             found.add(p)
 
-        # Sort longest names first to prevent partial substring collisions
-        sorted_names = sorted(list(found), key=lambda x: len(x), reverse=True)
+        # 2. Universal Proper Noun Detection:
+        # Any capitalized word appearing mid-sentence (not sentence-initial) that is not a stopword
+        # is definitively a proper noun (character, deity, or location name) across ANY novel.
+        mid_sentence_pattern = r'(?<=[,\s\"\(])[A-Z][a-z]{2,}(?=[,\s\.\?!;:\"\'\)])'
+        for t in texts:
+            if not t:
+                continue
+            matches = re.findall(mid_sentence_pattern, t)
+            for w in matches:
+                if w not in ENGLISH_STOPWORDS:
+                    found.add(w)
+
+        # 3. Clean and sort longest names first to prevent partial substring collisions
+        valid_names = [
+            n for n in found
+            if n not in ENGLISH_STOPWORDS and len(n) >= 3 and not (len(n) <= 4 and n.islower())
+        ]
+        sorted_names = sorted(valid_names, key=lambda x: len(x), reverse=True)
+
         self.tag_map.clear()
         self.reverse_map.clear()
         for idx, name in enumerate(sorted_names):
@@ -75,16 +128,39 @@ class UniversalEntityShield:
         if not text or not self.tag_map:
             return text
         res = text
+        # STRICT CASE-SENSITIVE: Never flags=re.IGNORECASE!
         for name, tag in self.tag_map.items():
-            res = re.sub(rf"\b{re.escape(name)}\b", tag, res, flags=re.IGNORECASE)
+            res = re.sub(rf"\b{re.escape(name)}\b", tag, res)
         return res
 
     def unmask(self, text: str) -> str:
-        if not text or not self.reverse_map:
+        if not text:
             return text
         res = text
-        for tag, name in self.reverse_map.items():
-            res = re.sub(rf"\b{re.escape(tag)}\b", name, res)
+        # 1. Exact unmasking
+        if self.reverse_map:
+            for tag, name in self.reverse_map.items():
+                res = re.sub(rf"\b{re.escape(tag)}\b", name, res)
+
+        # 2. Fuzzy restoration for mutated tags (e.g. TATH10, TINGG10, TAGGY8, Taggz6, TAG5, ThagL11, TaGS-12, TAMS12)
+        mutated_pat = r'\b([Tt]ag[A-Za-z0-9_-]*|T(?:A[TG]|ING|AG)[A-Za-z0-9_-]{1,8}|Thag[A-Za-z0-9_-]+|TaG[A-Za-z0-9_-]+)(-?(?:san|kun|chan|sama|senpai|sensei|dono))?\b'
+        matches = list(re.finditer(mutated_pat, res))
+        if matches and self.reverse_map:
+            names_list = list(self.reverse_map.values())
+            for m in matches:
+                full_match = m.group(0)
+                suffix = m.group(2) or ""
+                best_name = names_list[0] if names_list else ""
+                res = res.replace(full_match, f"{best_name}{suffix}".strip())
+
+        # 3. Fail-safe Katakana hallucination scrubber:
+        # MarianMT sometimes hallucinates katakana like マジック・エクスプロレーション or タルミナス・アイシクル
+        katakana_hallucination_pat = r'[\u30a0-\u30ff]{2,}(?:[・＝ー][\u30a0-\u30ff]+)*(?:\s*\d+)?'
+        res = re.sub(katakana_hallucination_pat, '', res)
+
+        # 4. SRT HTML Subtitle tag scrubber (<font color="#FFFF00">, </i>, etc.)
+        res = re.sub(r'&lt;font[^&gt;]*&gt;|&lt;/font&gt;|&lt;/i&gt;|<font[^>]*>|</font>|</i>|font\s*color=[^>\s]*', '', res, flags=re.IGNORECASE)
+
         return res
 
 
@@ -161,6 +237,21 @@ def disambiguate_en_with_ja(ja_text: str, en_text: str) -> str:
     if "コールドスリープ" in ja_text:
         res = re.sub(r"\bcold sleep\b", "cryogenic sleep", res, flags=re.IGNORECASE)
 
+    # 6. Kinship disambiguation (preventing 姉 older sister -> sister -> adik)
+    if any(k in ja_text for k in ["姉", "お姉", "姉さん", "姉貴"]) and "sister" in res.lower():
+        res = re.sub(r"\bsisters\b", "older sisters", res, flags=re.IGNORECASE)
+        res = re.sub(r"\bsister\b", "older sister", res, flags=re.IGNORECASE)
+    elif any(k in ja_text for k in ["妹", "妹さん", "妹たち"]) and "sister" in res.lower():
+        res = re.sub(r"\bsisters\b", "younger sisters", res, flags=re.IGNORECASE)
+        res = re.sub(r"\bsister\b", "younger sister", res, flags=re.IGNORECASE)
+
+    if any(k in ja_text for k in ["兄", "お兄", "兄さん", "兄貴"]) and "brother" in res.lower():
+        res = re.sub(r"\bbrothers\b", "older brothers", res, flags=re.IGNORECASE)
+        res = re.sub(r"\bbrother\b", "older brother", res, flags=re.IGNORECASE)
+    elif any(k in ja_text for k in ["弟", "弟さん", "弟たち"]) and "brother" in res.lower():
+        res = re.sub(r"\bbrothers\b", "younger brothers", res, flags=re.IGNORECASE)
+        res = re.sub(r"\bbrother\b", "younger brother", res, flags=re.IGNORECASE)
+
     return res
 
 
@@ -199,7 +290,12 @@ class MarianIDTranslator:
         sents, pre, suf = split_dialogue_aware(dis_text)
 
         tokens = [self.tokenizer.convert_ids_to_tokens(self.tokenizer.encode(s)) for s in sents]
-        results = self.translator.translate_batch(tokens)
+        results = self.translator.translate_batch(
+            tokens,
+            beam_size=4,
+            repetition_penalty=1.2,
+            no_repeat_ngram_size=3
+        )
         out_parts = []
         for r in results:
             t = self.tokenizer.decode(self.tokenizer.convert_tokens_to_ids(r.hypotheses[0]), skip_special_tokens=True)
@@ -231,7 +327,7 @@ class MarianIDTranslator:
         explicit_entities = list(stored_terms.values()) if stored_terms else []
 
         shield = UniversalEntityShield(explicit_names=explicit_entities)
-        shield.extract_names_from_texts(texts)
+        shield.extract_names_from_texts(texts, ja_texts=ja_texts)
 
         # 2. Disambiguate and segment paragraphs into atomic translation units
         # unit_map: list of (para_idx, sentence_str)
@@ -270,7 +366,12 @@ class MarianIDTranslator:
                 for t in batch_texts
             ]
 
-            trans_results = self.translator.translate_batch(batch_tokens)
+            trans_results = self.translator.translate_batch(
+                batch_tokens,
+                beam_size=4,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3
+            )
 
             for i, res in enumerate(trans_results):
                 hyp = res.hypotheses[0]
@@ -297,9 +398,10 @@ class MarianIDTranslator:
             joined = " ".join(sents_list)
             # Re-wrap quotes if original was a dialogue enclosure
             enclosed = f"{pre}{joined}{suf}"
-            smoothed = smooth_indonesian_prose(enclosed)
-            results[para_idx] = smoothed
+            results[para_idx] = enclosed
 
+        # 5. Apply chapter-level multi-paragraph naturalization & prose smoothing
+        results = naturalize_indonesian_batch(results)
         return results
 
     def close(self) -> None:

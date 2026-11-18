@@ -313,6 +313,70 @@ def patch_japanese_grammar(text: str) -> str:
     # '素直じゃないな' -> '素直じゃない性格だな' (Not being honest/straightforward with feelings)
     res = re.sub(r"素直じゃないなと(少しだけ)?笑", r"素直じゃない性格だなと\1笑", res)
 
+    # 5. Character & Fantasy Item Pre-translation Locks (prevents Sugoi hallucinating undead/vampires/NSFW)
+    # Monster / Rank Lord locks (prevents Road / Highroad / SMA vampir 441x)
+    res = re.sub(r'ゴブリンロード(?=[がはにものをとで、。！？\s]|$|たち|達)', 'Goblin Lord', res)
+    res = re.sub(r'ヴァンパイアハイロード(?=[がはにものをとで、。！？\s]|$|たち|達)', 'Vampire High Lord', res)
+    res = re.sub(r'ヴァンパイアロード(?=[がはにものをとで、。！？\s]|$|たち|達)', 'Vampire Lord', res)
+    res = re.sub(r'ハイロード(?=[がはにものをとで、。！？\s]|$|たち|達)', 'High Lord', res)
+    res = re.sub(r'(オーク|デーモン|コボルト|スケルトン|リッチ)ロード(?=[がはにものをとで、。！？\s]|$|たち|達)', r'\1 Lord', res)
+    res = re.sub(r'(?<=[の、。\s「『])ロード(?=[がはにものをとで、。！？\s]|$|たち|達)', 'Lord', res)
+
+    # Pet Tama (prevents 'his/her/my balls' 11x)
+    res = re.sub(r'タマ(?=[をにはがのとも]|\s*を撫で|\s*と遊|\s*を抱|を置いて)', 'Tama', res)
+
+    # Chicken sounds (prevents 'Cock' -> 'Penis')
+    res = re.sub(r'コッコ(?=[。、！？\s「」と]|$)', 'Kokko', res)
+    res = re.sub(r'コケッ(?=[。、！？\s「」と]|$)', 'Kokek', res)
+
+    # Kinship, Titles & Light Novel Tropes
+    res = re.sub(r'第([一二三四五六七八九十\d]+)位階', r'Rank \1', res)
+    res = re.sub(r'位階(?=[がはにものをとで、。！？\s]|$)', 'Rank', res)
+    res = re.sub(r'舐めるな', '甘く見るな', res)
+    res = re.sub(r'重湯', '薄いお粥', res)
+    res = re.sub(r'魔力奪剣', 'Mana Draining Sword', res)
+    res = re.sub(r'神鶏', 'Divine Chicken', res)
+    res = re.sub(r'大賢者', 'Great Sage', res)
+    res = re.sub(r'ゴランとセルリスの親子', 'ゴランとセルリスの父娘', res)
+
+    # Universal Character Locks (prevents mutilation into common nouns/other anime)
+    res = re.sub(r'ラック・フランゼン', 'Luck Franzen', res)
+    res = re.sub(r'ラック(?=[がはにものをとで、。！？\s]|$|さん|君|様)', 'Luck', res)
+    res = re.sub(r'ロック(?=[がはにものをとで、。！？\s]|$|さん|君|様)', 'Rock', res)
+    res = re.sub(r'セルリス(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Cerlis', res)
+    res = re.sub(r'フィリー(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様|嬢)', 'Philly', res)
+    res = re.sub(r'シア(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Shia', res)
+    res = re.sub(r'ケーテ(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Kete', res)
+    res = re.sub(r'ガルヴ(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Garv', res)
+    res = re.sub(r'ゲルベルガ(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Gerberga', res)
+    res = re.sub(r'ルッチラ(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Lucilla', res)
+    res = re.sub(r'モルス(?=[がはにものをとで、。！？\s]|$|さん|ちゃん|様)', 'Mors', res)
+    res = re.sub(r'マスタフォン', 'Mustaphon', res)
+    res = re.sub(r'ゴラン(?=[がはにものをとで、。！？\s]|$|さん|様|邸)', 'Goran', res)
+
+    # コンコン棒EX -> Konkon Wand EX (prevents 'condom-stick EX' / 'masturbation rod' / 'sex')
+    res = re.sub(r"コンコン棒EX", "Konkon Wand EX", res)
+    res = re.sub(r"コンコン棒", "Konkon Wand", res)
+    res = re.sub(r"エクス棒", "Ex Wand", res)
+
+    # リシュ -> Lishu (prevents turning into 'Lich' undead monster 60x)
+    res = re.sub(r"リシュ(?=[がはにものをとで、。！？\s]|$|様|さん|ちゃん)", "Lishu", res)
+
+    # ノート -> Note (prevents butler Note becoming 'Notebook' 38x)
+    res = re.sub(r"ノート(?=[がはにものをとで、。！？\s]|$|様|さん)", "Note", res)
+
+    # ヴァン -> Van (prevents turning into 'Van Helsing' / 'Vampire' 13x)
+    res = re.sub(r"ヴァン(?=[がはにものをとで、。！？\s]|$|様|さん)", "Van", res)
+
+    # 万能ネギ -> 青ネギ (green onions, prevents 'almighty green onions')
+    res = re.sub(r"万能ネギ", "青ネギ", res)
+
+    # ホーロー -> エナメル (enamel, prevents 'Holo' / 'Hollow')
+    res = re.sub(r"ホーロー(?=[がはにものをとで、。！？\s]|鍋|製)", "エナメル", res)
+
+    # 反動で -> 反動として (prevents 'recoil' literalism on title and text)
+    res = re.sub(r"反動で", "その反動として", res)
+
     return res
 
 
@@ -437,6 +501,10 @@ class SugoiTranslator:
         unit_map: List[Tuple[int, str]] = []
         for idx, text in enumerate(texts):
             if text and text.strip():
+                # If the line is purely scene break symbols (e.g. ◇◇◇, ◆◆◆, ***, ―――), pass-through directly!
+                if re.match(r'^[◇◆\*＊─━＝=\-\s]{2,}$', text.strip()):
+                    results[idx] = text.strip()
+                    continue
                 # Apply pre-processing grammar patcher to resolve pro-drop and zero-anaphora
                 patched_text = patch_japanese_grammar(text)
                 units = segment_japanese_paragraph(patched_text, max_chars=250)
@@ -475,6 +543,20 @@ class SugoiTranslator:
             for i, out in enumerate(outputs):
                 hyp = out.hypotheses[0]
                 decoded = self.sp_target.decode(hyp).replace("<unk>", "").strip()
+
+                # Rescuer for dropped lines (Sugoi outputting '.' or empty on non-trivial Japanese text)
+                ja_source = batch_texts[i].strip()
+                if len(ja_source) >= 5 and decoded in [".", "...", "", "!", "―", "-"]:
+                    try:
+                        from core.translators.novel_jp import NovelJPTranslator
+                        if not hasattr(self, "_novel_rescuer") or self._novel_rescuer is None:
+                            self._novel_rescuer = NovelJPTranslator()
+                        rescued = self._novel_rescuer.translate_single(ja_source)
+                        if rescued and len(rescued.strip()) > 3:
+                            decoded = rescued.strip()
+                    except Exception as e:
+                        print(f"[Sugoi Rescuer] Fallback error on dropped line: {e}")
+
                 translated_units[b_start + i] = decoded
 
             processed_units += len(batch_items)
@@ -492,6 +574,11 @@ class SugoiTranslator:
             smoothed_en = smooth_dialogue_contractions(gender_en)
             # 4. Apply light novel prose naturalization (awkward MT idioms -> fluent prose)
             prose_en = smooth_light_novel_prose(smoothed_en)
+
+            # 5. Anti-runaway: squash extreme dot repetitions (prevents 700 dots triggering SRT HTML leaks)
+            prose_en = re.sub(r'\.{5,}', '...', prose_en)
+            prose_en = re.sub(r'([A-Za-z]-)\1{5,}', r'\1\1...', prose_en)
+            prose_en = re.sub(r'([A-Za-z])\1{7,}', r'\1\1\1', prose_en)
 
             # Ensure sentence has terminal punctuation if Japanese sentence ended with punctuation
             if ja_unit.endswith(("。", "！", "？")) and not prose_en.endswith((".", "!", "?", '"', "'")):
