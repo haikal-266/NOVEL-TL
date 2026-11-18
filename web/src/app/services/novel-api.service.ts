@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 import {
   NovelInspectResponse,
   GenerateRequest,
-  JobState
+  JobState,
+  DatasetStats,
+  SettingsInfo
 } from '../models/novel.model';
 
 @Injectable({
@@ -38,5 +40,17 @@ export class NovelApiService {
 
   getDownloadUrl(filename: string): string {
     return `${this.baseUrl}/download/${encodeURIComponent(filename)}`;
+  }
+
+  getDatasetStats(): Observable<DatasetStats> {
+    return this.http.get<DatasetStats>(`${this.baseUrl}/dataset/stats`);
+  }
+
+  getSettings(): Observable<SettingsInfo> {
+    return this.http.get<SettingsInfo>(`${this.baseUrl}/settings`);
+  }
+
+  updateSettings(payload: { geminiApiKey?: string; defaultEngine?: string }): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(`${this.baseUrl}/settings`, payload);
   }
 }

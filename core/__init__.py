@@ -10,6 +10,7 @@ from .cache_manager import CacheManager
 from .epub_builder import EPUBBuilder, clean_english_text
 from .translators.sugoi import SugoiTranslator
 from .glossary import GlossaryManager, get_glossary_manager
+from .dataset_logger import DatasetLogger, get_dataset_logger
 
 def __getattr__(name: str):
     if name == "SeaLLMTranslator":
@@ -18,6 +19,12 @@ def __getattr__(name: str):
     if name == "LLMTranslator":
         from .translators.llm import LLMTranslator
         return LLMTranslator
+    if name == "GeminiTranslator":
+        from .translators.gemini_translator import GeminiTranslator
+        return GeminiTranslator
+    if name == "get_gemini_translator":
+        from .translators.gemini_translator import get_gemini_translator
+        return get_gemini_translator
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = [
@@ -33,6 +40,10 @@ __all__ = [
     "SugoiTranslator",
     "SeaLLMTranslator",
     "LLMTranslator",
+    "GeminiTranslator",
+    "get_gemini_translator",
+    "DatasetLogger",
+    "get_dataset_logger",
     "GlossaryManager",
     "get_glossary_manager"
 ]

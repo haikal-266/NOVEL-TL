@@ -24,7 +24,7 @@ export class NovelPreviewComponent {
   rangeType: RangeType = 'current';
   customRange = '1-5';
   mode: TranslationMode = 'translated';
-  targetLang: TargetLanguage = 'en';
+  targetLang: TargetLanguage = 'id';
   forceTranslate = false;
 
   ngOnInit(): void {

@@ -16,6 +16,9 @@ def __getattr__(name: str):
     if name == "LLMTranslator":
         from .llm import LLMTranslator
         return LLMTranslator
+    if name == "GeminiTranslator":
+        from .gemini_translator import GeminiTranslator
+        return GeminiTranslator
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-__all__ = ["NovelJPTranslator", "SugoiTranslator", "MarianIDTranslator", "SeaLLMTranslator", "LLMTranslator"]
+__all__ = ["NovelJPTranslator", "SugoiTranslator", "MarianIDTranslator", "SeaLLMTranslator", "LLMTranslator", "GeminiTranslator"]

@@ -27,6 +27,10 @@ output_*/
 *.epub
 veltl/
 
+# --- Configuration & Secrets ---
+config.json
+.env
+
 # --- Python ---
 __pycache__/
 *.py[cod]

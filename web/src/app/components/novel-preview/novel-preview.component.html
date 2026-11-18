@@ -6,11 +6,8 @@
         <span class="neo-badge bg-[#D7FF28] text-black text-[9px] px-2.5 py-0.5 border border-black font-mono">
           SELECTED NOVEL
         </span>
-        <span
-          class="neo-badge text-[9px] px-2 py-0.5 font-mono border border-black font-bold"
-          [class.bg-[#FFC0AD]]="novel.source !== 'syosetu'"
-          [class.bg-[#E78FB3]]="novel.source === 'syosetu'"
-        >
+        <span class="neo-badge text-[9px] px-2 py-0.5 font-mono border border-black font-bold"
+          [class.bg-[#FFC0AD]]="novel.source !== 'syosetu'" [class.bg-[#E78FB3]]="novel.source === 'syosetu'">
           {{ novel.source === 'syosetu' ? 'SYOSETU' : 'KAKUYOMU' }}
         </span>
       </div>
@@ -43,38 +40,30 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
       <!-- Option 1: Current Episode (if available) -->
       @if (novel.currentEpisodeIndex) {
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setRangeType('current')"
-          [class.neo-card-active]="rangeType === 'current'"
-          class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
-        >
-          <div class="flex items-start justify-between gap-1.5 mb-1.5">
-            <div class="flex items-center space-x-2 min-w-0">
-              <app-icon name="bookmark" [size]="15" class="text-black flex-shrink-0" />
-              <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
-                Current Chapter
-              </p>
-            </div>
-            <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
-              #{{ novel.currentEpisodeIndex }}
-            </span>
+      <div role="button" tabindex="0" (click)="setRangeType('current')"
+        [class.neo-card-active]="rangeType === 'current'"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]">
+        <div class="flex items-start justify-between gap-1.5 mb-1.5">
+          <div class="flex items-center space-x-2 min-w-0">
+            <app-icon name="bookmark" [size]="15" class="text-black flex-shrink-0" />
+            <p class="font-black text-xs text-[#1A1A1A] leading-tight truncate">
+              Current Chapter
+            </p>
           </div>
-          <p class="text-[10px] font-mono font-bold text-gray-500 leading-tight">
-            Episode from URL
-          </p>
+          <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0"
+            style="color: #ffffff !important;">
+            #{{ novel.currentEpisodeIndex }}
+          </span>
         </div>
+        <p class="text-[10px] font-mono font-bold text-gray-500 leading-tight">
+          Episode from URL
+        </p>
+      </div>
       }
 
       <!-- Option 2: Custom Range -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setRangeType('range')"
-        [class.neo-card-active]="rangeType === 'range'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
-      >
+      <div role="button" tabindex="0" (click)="setRangeType('range')" [class.neo-card-active]="rangeType === 'range'"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]">
         <div class="flex items-start justify-between gap-1.5 mb-1.5">
           <div class="flex items-center space-x-2 min-w-0">
             <app-icon name="sliders" [size]="15" class="text-black flex-shrink-0" />
@@ -82,7 +71,8 @@
               Custom Range
             </p>
           </div>
-          <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
+          <span class="neo-badge bg-black text-white text-[9px] px-2 py-0.5 font-mono font-bold flex-shrink-0"
+            style="color: #ffffff !important;">
             CUSTOM
           </span>
         </div>
@@ -92,13 +82,8 @@
       </div>
 
       <!-- Option 3: All Chapters -->
-      <div
-        role="button"
-        tabindex="0"
-        (click)="setRangeType('all')"
-        [class.neo-card-active]="rangeType === 'all'"
-        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]"
-      >
+      <div role="button" tabindex="0" (click)="setRangeType('all')" [class.neo-card-active]="rangeType === 'all'"
+        class="neo-card-sm p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[72px]">
         <div class="flex items-start justify-between gap-1.5 mb-1.5">
           <div class="flex items-center space-x-2 min-w-0">
             <app-icon name="flame" [size]="15" class="text-black flex-shrink-0" />
@@ -120,27 +105,24 @@
 
     <!-- Dedicated Custom Range Input Bar (Clean & Roomy, never cramps the cards) -->
     @if (rangeType === 'range') {
-      <div class="mt-2.5 p-2.5 bg-[#FBFAF6] border-2 border-black rounded-xl flex items-center gap-2 shadow-[2px_2px_0px_#000] animate-fadeIn">
-        <label for="customRangeInput" class="text-xs font-mono font-bold text-[#55423C] flex-shrink-0">
-          Range:
-        </label>
-        <input
-          id="customRangeInput"
-          type="text"
-          [(ngModel)]="customRange"
-          placeholder="e.g. 1-5 or 1,2,3"
-          class="neo-input flex-1 p-2 bg-white text-xs font-mono font-black"
-        />
-        <span class="neo-badge bg-black text-white text-[10px] px-2.5 py-1.5 font-mono font-bold flex-shrink-0" style="color: #ffffff !important;">
-          Max: {{ novel.totalEpisodes }}
-        </span>
-      </div>
+    <div
+      class="mt-2.5 p-2.5 bg-[#FBFAF6] border-2 border-black rounded-xl flex items-center gap-2 shadow-[2px_2px_0px_#000] animate-fadeIn">
+      <label for="customRangeInput" class="text-xs font-mono font-bold text-[#55423C] flex-shrink-0">
+        Range:
+      </label>
+      <input id="customRangeInput" type="text" [(ngModel)]="customRange" placeholder="e.g. 1-5 or 1,2,3"
+        class="neo-input flex-1 p-2 bg-white text-xs font-mono font-black" />
+      <span class="neo-badge bg-black text-white text-[10px] px-2.5 py-1.5 font-mono font-bold flex-shrink-0"
+        style="color: #ffffff !important;">
+        Max: {{ novel.totalEpisodes }}
+      </span>
+    </div>
     }
   </div>
 
   <!-- Bento Section 2: Model & Format Grid (Side-by-Side on Desktop) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
-    
+
     <!-- Left: Target Language (AI Model) -->
     <div>
       <label class="block font-black text-xs uppercase tracking-wide text-[#55423C] mb-2.5">
@@ -148,24 +130,16 @@
       </label>
       <div class="grid grid-cols-2 gap-2.5">
         <!-- Option 1: EN (Sugoi V4) -->
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setTargetLang('en')"
-          [class.neo-card-active]="targetLang === 'en'"
-          class="neo-card-sm p-2.5 sm:p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]"
-        >
+        <div role="button" tabindex="0" (click)="setTargetLang('en')" [class.neo-card-active]="targetLang === 'en'"
+          class="neo-card-sm p-2.5 sm:p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]">
           <div class="flex items-center justify-between gap-1 mb-1">
             <span class="font-black text-xs sm:text-sm text-[#1A1A1A] leading-tight">
               EN
             </span>
-            <div
-              class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
-              [class.bg-black]="targetLang === 'en'"
-              [class.bg-white]="targetLang !== 'en'"
-            >
+            <div class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
+              [class.bg-black]="targetLang === 'en'" [class.bg-white]="targetLang !== 'en'">
               @if (targetLang === 'en') {
-                <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
+              <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
               }
             </div>
           </div>
@@ -175,29 +149,21 @@
         </div>
 
         <!-- Option 2: ID (VelTL Indonesian) -->
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setTargetLang('id')"
-          [class.neo-card-active]="targetLang === 'id'"
-          class="neo-card-sm p-2.5 sm:p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]"
-        >
+        <div role="button" tabindex="0" (click)="setTargetLang('id')" [class.neo-card-active]="targetLang === 'id'"
+          class="neo-card-sm p-2.5 sm:p-3 cursor-pointer transition-all border-2 border-black flex flex-col justify-between min-h-[64px]">
           <div class="flex items-center justify-between gap-1 mb-1">
             <span class="font-black text-xs sm:text-sm text-[#1A1A1A] leading-tight">
               ID
             </span>
-            <div
-              class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
-              [class.bg-black]="targetLang === 'id'"
-              [class.bg-white]="targetLang !== 'id'"
-            >
+            <div class="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center flex-shrink-0"
+              [class.bg-black]="targetLang === 'id'" [class.bg-white]="targetLang !== 'id'">
               @if (targetLang === 'id') {
-                <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
+              <div class="w-1.5 h-1.5 bg-[#D7FF28] rounded-full"></div>
               }
             </div>
           </div>
           <p class="text-[9.5px] font-mono font-bold text-gray-500">
-            VelTL ID
+            Gemini Flash
           </p>
         </div>
       </div>
@@ -210,38 +176,24 @@
       </label>
       <div class="grid grid-cols-3 gap-2">
         <!-- Clean Translated -->
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setMode('translated')"
-          [class.neo-card-active]="mode === 'translated'"
-          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
-        >
+        <div role="button" tabindex="0" (click)="setMode('translated')" [class.neo-card-active]="mode === 'translated'"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]">
           <p class="font-black text-xs text-[#1A1A1A]">100% Clean</p>
           <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">No Japanese</p>
         </div>
 
         <!-- Bilingual -->
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setMode('bilingual')"
-          [class.neo-card-active]="mode === 'bilingual'"
-          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]"
-        >
+        <div role="button" tabindex="0" (click)="setMode('bilingual')" [class.neo-card-active]="mode === 'bilingual'"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px]">
           <p class="font-black text-xs text-[#1A1A1A]">Bilingual</p>
           <p class="text-[9px] font-mono font-bold text-gray-500 mt-0.5">JP + Terjemahan</p>
         </div>
 
         <!-- Audit Mode (.md) -->
-        <div
-          role="button"
-          tabindex="0"
-          (click)="setMode('audit')"
-          [class.neo-card-active]="mode === 'audit'"
-          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px] relative"
-        >
-          <span class="absolute -top-2 -right-1 bg-[#D7FF28] text-black text-[8px] font-black px-1.5 py-0.2 border border-black rounded shadow-[1px_1px_0px_#000]">
+        <div role="button" tabindex="0" (click)="setMode('audit')" [class.neo-card-active]="mode === 'audit'"
+          class="neo-card-sm p-2 cursor-pointer transition-all border-2 border-black text-center flex flex-col justify-between min-h-[64px] relative">
+          <span
+            class="absolute -top-2 -right-1 bg-[#D7FF28] text-black text-[8px] font-black px-1.5 py-0.2 border border-black rounded shadow-[1px_1px_0px_#000]">
             DEV
           </span>
           <p class="font-black text-xs text-[#1A1A1A]">Audit (.md)</p>
@@ -257,16 +209,11 @@
     <!-- Force Re-translate Checkbox -->
     <label class="flex items-center gap-2.5 cursor-pointer select-none group">
       <div class="relative flex-shrink-0">
-        <input
-          type="checkbox"
-          [(ngModel)]="forceTranslate"
-          class="sr-only peer"
-        />
+        <input type="checkbox" [(ngModel)]="forceTranslate" class="sr-only peer" />
         <div
-          class="w-5 h-5 bg-white border-2 border-black rounded-none transition-all flex items-center justify-center peer-checked:bg-[#D7FF28] shadow-[1px_1px_0px_#000]"
-        >
+          class="w-5 h-5 bg-white border-2 border-black rounded-none transition-all flex items-center justify-center peer-checked:bg-[#D7FF28] shadow-[1px_1px_0px_#000]">
           @if (forceTranslate) {
-            <app-icon name="check" [size]="14" class="text-black font-black" />
+          <app-icon name="check" [size]="14" class="text-black font-black" />
           }
         </div>
       </div>
@@ -281,19 +228,15 @@
     </label>
 
     <!-- CTA Generate Button -->
-    <button
-      type="button"
-      (click)="onGenerate()"
-      [disabled]="isGenerating"
-      class="neo-btn w-full sm:w-auto sm:min-w-[240px] p-3 sm:p-3.5 bg-[#D7FF28] text-black font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-[#cbf71e] flex items-center justify-center gap-2 border-[2px] border-black shadow-[3px_3px_0px_#000] active:translate-x-[1px] active:translate-y-[1px]"
-    >
+    <button type="button" (click)="onGenerate()" [disabled]="isGenerating"
+      class="neo-btn w-full sm:w-auto sm:min-w-[240px] p-3 sm:p-3.5 bg-[#D7FF28] text-black font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-[#cbf71e] flex items-center justify-center gap-2 border-[2px] border-black shadow-[3px_3px_0px_#000] active:translate-x-[1px] active:translate-y-[1px]">
       @if (isGenerating) {
-        <span class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-        <span>STARTING GENERATOR...</span>
+      <span class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+      <span>STARTING GENERATOR...</span>
       } @else {
-        <app-icon name="download" [size]="16" />
-        <span>GENERATE EPUB NOW</span>
-        <app-icon name="arrow-right" [size]="14" />
+      <app-icon name="download" [size]="16" />
+      <span>GENERATE EPUB NOW</span>
+      <app-icon name="arrow-right" [size]="14" />
       }
     </button>
   </div>
